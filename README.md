@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AP Blitz
 
-## Getting Started
+Student-run AP education org. Public recruitment site + private team workspace.
 
-First, run the development server:
+This is where AP Blitz operates: apply → get accepted → set up an account → messages, calendar, tasks, content pipeline, daily logs, meetings.
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript
+- Tailwind CSS 4
+- PostgreSQL + Prisma
+- Session auth (httpOnly cookies, hashed passwords, DB sessions)
+- File uploads on disk (swap later for S3/R2)
+- Email via SMTP env vars (logs to console if SMTP is unset)
+
+## Setup
+
+1. Install Docker Desktop (for Postgres) and Node 20+.
+2. Copy env and set a real secret + founder password:
+
+```bash
+cp .env.example .env
+```
+
+Generate `AUTH_SECRET`:
+
+```bash
+openssl rand -base64 48
+```
+
+3. Start the database and seed:
+
+```bash
+npm run db:up
+npm run db:setup
+```
+
+4. Run the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Postgres is mapped to **port 5433** so it doesn't collide with other local databases.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Default local logins
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set in `.env` (seed uses these):
 
-## Learn More
+- **Founder:** `FOUNDER_EMAIL` / `FOUNDER_PASSWORD` (defaults to kesavgarg@gmail.com)
+- **Demo team** (if `SEED_DEMO=true`): `maya@apblitz.local`, `jordan@apblitz.local`, `sam@apblitz.local`, `riley@apblitz.local`, `alex@apblitz.local`, `taylor@apblitz.local`  
+  Password: `BlitzMember!2026`
 
-To learn more about Next.js, take a look at the following resources:
+Change the founder password before this is public.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Founder video
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Paste a YouTube URL in **Admin → Settings**. The homepage embed updates immediately. Direct `.mp4` URLs work too.
 
-## Deploy on Vercel
+## Email
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Without SMTP, confirmations still send — they print to the terminal. Set:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=AP Blitz <hello@apblitz.org>
+```
+
+## Routes
+
+- `/` public site
+- `/join` and `/join/[role]` role pages
+- `/apply` application form
+- `/login` team login
+- `/setup-account` invite link from acceptance email
+- `/workspace` team HQ
+- `/admin` founder / team-admin control center
+
+Applications are never public. Changing a URL id still hits a server-side permission check.
+
+## Production notes
+
+- Use a real Postgres (`DATABASE_URL`)
+- Put uploads on object storage
+- Set `AUTH_SECRET` and a strong founder password
+- Serve over HTTPS so session cookies are `Secure`

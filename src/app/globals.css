@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #000000;
+  --ink-2: #050505;
+  --navy: #0a0a0a;
+  --line: rgba(255, 255, 255, 0.1);
+  --paper: #f4efe6;
+  --paper-2: #fffaf2;
+  --muted: #9aa3b5;
+  --volt: #ff914d;
+  --cyan: #3ee0ff;
+  --coral: #ff6b4a;
+  --violet: #a78bfa;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-navy: var(--navy);
+  --color-line: var(--line);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-muted: var(--muted);
+  --color-volt: var(--volt);
+  --color-cyan: var(--cyan);
+  --color-coral: var(--coral);
+  --color-violet: var(--violet);
+  --font-sans: var(--font-outfit);
+  --font-display: var(--font-syne);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background-color: #000;
+  color: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+}
+
+.mesh {
+  background-color: #000;
+  background-image: url("/stars.svg");
+  background-size: 560px 560px;
+  background-repeat: repeat;
+  background-position: 0 0;
+}
+
+.card-grid {
+  background-image: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

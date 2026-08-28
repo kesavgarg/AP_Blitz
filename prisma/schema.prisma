@@ -1,0 +1,577 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PermissionRole {
+  FOUNDER
+  TEAM_ADMIN
+  MEMBER
+}
+
+enum TeamKey {
+  VIDEO_CREATOR
+  SCRIPT_WRITER
+  VIDEO_EDITOR
+  SOCIAL_MEDIA
+  GRAPHIC_DESIGN
+  SEO
+}
+
+enum ApplicationStatus {
+  NEW
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+}
+
+enum GradeLevel {
+  GRADE_9
+  GRADE_10
+  GRADE_11
+  GRADE_12
+}
+
+enum YesNo {
+  YES
+  NO
+}
+
+enum ContentStatus {
+  IDEA
+  IDEA_APPROVED
+  SCRIPT_IN_PROGRESS
+  SCRIPT_SUBMITTED
+  SCRIPT_NEEDS_REVISION
+  SCRIPT_APPROVED
+  VIDEO_ASSIGNED
+  VIDEO_IN_PROGRESS
+  VIDEO_SUBMITTED
+  WAITING_FOR_EDITOR
+  EDITING
+  EDIT_SUBMITTED
+  EDIT_NEEDS_REVISION
+  GRAPHICS
+  SEO
+  FINAL_REVIEW
+  READY_TO_PUBLISH
+  PUBLISHED
+}
+
+enum ScriptStatus {
+  DRAFT
+  SUBMITTED
+  NEEDS_REVISION
+  APPROVED
+  ASSIGNED
+  COMPLETED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  SUBMITTED
+  NEEDS_REVISION
+  COMPLETED
+}
+
+enum CalendarEventType {
+  TASK_DEADLINE
+  CONTENT_DEADLINE
+  MEETING
+  POSTING_DATE
+  TEAM_EVENT
+  ANNOUNCEMENT
+  APPLICATION
+}
+
+enum DesignRequestType {
+  INSTAGRAM_POST
+  INSTAGRAM_CAROUSEL
+  THUMBNAIL
+  INFOGRAPHIC
+  STORY
+  OTHER
+}
+
+enum ChannelKey {
+  GENERAL
+  VIDEO_CREATOR
+  SCRIPT_WRITER
+  VIDEO_EDITOR
+  SOCIAL_MEDIA
+  GRAPHIC_DESIGN
+  SEO
+  ADMIN
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String?
+  firstName    String
+  lastName     String
+  phone        String?
+  role         PermissionRole @default(MEMBER)
+  isActive     Boolean        @default(true)
+  mustChangePassword Boolean  @default(false)
+  imageUrl     String?
+  gradeLevel   GradeLevel?
+  highSchool   String?
+  cityCounty   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  lastLoginAt  DateTime?
+
+  memberships        TeamMembership[]
+  sessions           Session[]
+  reviewedApps       Application[]            @relation("Reviewer")
+  acceptedApp        Application?             @relation("AcceptedUser")
+  messages           Message[]
+  tasksAssigned      Task[]                   @relation("TaskAssignee")
+  tasksCreated       Task[]                   @relation("TaskCreator")
+  contentOwned       ContentItem[]            @relation("ContentOwner")
+  scripts            Script[]
+  dailyLogs          DailyLog[]
+  notifications      Notification[]
+  activityLogs       ActivityLog[]
+  announcements      Announcement[]           @relation("AnnouncementAuthor")
+  hostedMeetings     Meeting[]                @relation("MeetingHost")
+  meetingAttendees   MeetingAttendee[]
+  files              FileAsset[]
+  pins               MessagePin[]
+  eventAssignees     CalendarEventAssignee[]
+  inviteTokens       InviteToken[]
+  messageReads       MessageRead[]
+  createdEvents      CalendarEvent[]          @relation("EventCreator")
+  socialIdeas        SocialIdea[]
+  seoRequests        SeoRequest[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model InviteToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  key         TeamKey  @unique
+  name        String
+  description String
+  createdAt   DateTime @default(now())
+
+  memberships    TeamMembership[]
+  channel        MessageChannel?
+  content        ContentItem[]
+  events         CalendarEvent[]
+  meetings       Meeting[]
+  dailyLogs      DailyLog[]
+  designRequests DesignRequest[]
+}
+
+model TeamMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  isLeader  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+model Application {
+  id               String            @id @default(cuid())
+  applicationId    String            @unique
+  firstName        String
+  lastName         String
+  gradeLevel       GradeLevel
+  highSchool       String
+  cityCounty       String
+  email            String
+  phone            String
+  apClasses        String
+  firstChoice      TeamKey
+  secondChoice     TeamKey
+  experience       String?
+  expectContribute YesNo
+  expectRespond    YesNo
+  expectRemoval    YesNo
+  expectConduct    YesNo
+  expectDeadlines  YesNo
+  deadlineScenario String
+  additionalInfo   String?
+  status           ApplicationStatus @default(NEW)
+  adminNotes       String?
+  rejectReason     String?
+  assignedRole     TeamKey?
+  issuedTempPassword String?
+  lastEmailStatus  String?
+  submittedAt      DateTime          @default(now())
+  reviewedAt       DateTime?
+  reviewedById     String?
+  reviewedBy       User?             @relation("Reviewer", fields: [reviewedById], references: [id])
+  acceptedUserId   String?           @unique
+  acceptedUser     User?             @relation("AcceptedUser", fields: [acceptedUserId], references: [id])
+}
+
+model OrgSettings {
+  id                 String @id @default("org")
+  orgName            String @default("AP Blitz")
+  founderName        String @default("Kesav Garg")
+  founderTitle       String @default("Founder")
+  founderBio         String @default("Student founder building AP Blitz so studying for APs actually feels doable — and a little less lonely.")
+  contactEmail       String @default("kesavgarg@gmail.com")
+  contactPhone       String @default("+1 (404) 212-9019")
+  founderVideoUrl    String @default("")
+  founderVideoType   String @default("youtube")
+  defaultMeetingLink String @default("")
+  brandTagline       String @default("Student-run AP content, built for students.")
+  smtpHost           String @default("")
+  smtpPort           String @default("587")
+  smtpUser           String @default("")
+  smtpPass           String @default("")
+}
+
+model OutgoingEmail {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  status    String
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+model MessageChannel {
+  id          String     @id @default(cuid())
+  key         ChannelKey @unique
+  name        String
+  description String?
+  teamId      String?    @unique
+  team        Team?      @relation(fields: [teamId], references: [id])
+  isPrivate   Boolean    @default(true)
+  messages    Message[]
+}
+
+model Message {
+  id        String        @id @default(cuid())
+  channelId String
+  channel   MessageChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime      @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+  fileId    String?
+  file      FileAsset?    @relation(fields: [fileId], references: [id])
+  pins      MessagePin[]
+  reads     MessageRead[]
+}
+
+model MessagePin {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model ContentItem {
+  id          String        @id @default(cuid())
+  contentId   String        @unique
+  title       String
+  apSubject   String?
+  apUnit      String?
+  contentType String        @default("short_form_video")
+  status      ContentStatus @default(IDEA)
+  ownerId     String?
+  owner       User?         @relation("ContentOwner", fields: [ownerId], references: [id])
+  teamId      String?
+  team        Team?         @relation(fields: [teamId], references: [id])
+  deadline    DateTime?
+  publishAt   DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  socialIdea     SocialIdea?
+  script         Script?
+  video          Video?
+  designRequests DesignRequest[]
+  seoRequest     SeoRequest?
+  files          FileAsset[]
+  history        ContentHistory[]
+  tasks          Task[]
+  events         CalendarEvent[]
+}
+
+model ContentHistory {
+  id         String      @id @default(cuid())
+  contentId  String
+  content    ContentItem @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  userId     String?
+  action     String
+  fromStatus String?
+  toStatus   String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+}
+
+model SocialIdea {
+  id               String      @id @default(cuid())
+  contentItemId    String      @unique
+  contentItem      ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  authorId         String
+  author           User        @relation(fields: [authorId], references: [id])
+  ideaTitle        String
+  platform         String
+  trendLink        String?
+  description      String
+  whyItWorks       String?
+  suggestedCaption String?
+  suggestedFormat  String?
+  status           String      @default("submitted")
+  createdAt        DateTime    @default(now())
+}
+
+model Script {
+  id            String       @id @default(cuid())
+  contentItemId String       @unique
+  contentItem   ContentItem  @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User         @relation(fields: [authorId], references: [id])
+  title         String
+  apSubject     String?
+  apUnit        String?
+  body          String       @default("")
+  status        ScriptStatus @default(DRAFT)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  submittedAt   DateTime?
+}
+
+model Video {
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  creatorId     String?
+  editorId      String?
+  rawFileId     String?
+  editedFileId  String?
+  creatorNotes  String?
+  editorNotes   String?
+  creatorStatus String      @default("assigned")
+  editorStatus  String      @default("waiting")
+  assignedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model DesignRequest {
+  id          String            @id @default(cuid())
+  contentItemId String?
+  contentItem ContentItem?      @relation(fields: [contentItemId], references: [id])
+  teamId      String?
+  team        Team?             @relation(fields: [teamId], references: [id])
+  type        DesignRequestType
+  title       String
+  description String
+  dimensions  String?
+  deadline    DateTime?
+  referenceUrl String?
+  assigneeId  String?
+  canvaLink   String?
+  status      String            @default("open")
+  createdAt   DateTime          @default(now())
+  files       FileAsset[]
+}
+
+model SeoRequest {
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  specialistId  String?
+  specialist    User?       @relation(fields: [specialistId], references: [id])
+  title         String?
+  altTitles     String?
+  keywords      String?
+  description   String?
+  hashtags      String?
+  searchTerms   String?
+  notes         String?
+  status        String      @default("draft")
+  submittedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model FileAsset {
+  id              String          @id @default(cuid())
+  filename        String
+  storedName      String
+  mimeType        String
+  size            Int
+  path            String
+  uploadedById    String
+  uploadedBy      User            @relation(fields: [uploadedById], references: [id])
+  contentItemId   String?
+  contentItem     ContentItem?    @relation(fields: [contentItemId], references: [id])
+  designRequestId String?
+  designRequest   DesignRequest?  @relation(fields: [designRequestId], references: [id])
+  messages        Message[]
+  createdAt       DateTime        @default(now())
+}
+
+model Task {
+  id            String     @id @default(cuid())
+  title         String
+  description   String?
+  status        TaskStatus @default(TODO)
+  assigneeId    String?
+  assignee      User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId     String
+  creator       User       @relation("TaskCreator", fields: [creatorId], references: [id])
+  contentItemId String?
+  contentItem   ContentItem? @relation(fields: [contentItemId], references: [id])
+  teamKey       TeamKey?
+  deadline      DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model CalendarEvent {
+  id            String            @id @default(cuid())
+  title         String
+  description   String?
+  startAt       DateTime
+  endAt         DateTime?
+  allDay        Boolean           @default(false)
+  type          CalendarEventType
+  teamId        String?
+  team          Team?             @relation(fields: [teamId], references: [id])
+  contentItemId String?
+  contentItem   ContentItem?      @relation(fields: [contentItemId], references: [id])
+  meetingId     String?
+  createdById   String?
+  createdBy     User?             @relation("EventCreator", fields: [createdById], references: [id])
+  createdAt     DateTime          @default(now())
+  assignees     CalendarEventAssignee[]
+}
+
+model CalendarEventAssignee {
+  id      String        @id @default(cuid())
+  eventId String
+  event   CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime?
+  meetingLink String
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id])
+  hostId      String
+  host        User     @relation("MeetingHost", fields: [hostId], references: [id])
+  createdAt   DateTime @default(now())
+  attendees   MeetingAttendee[]
+}
+
+model MeetingAttendee {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  required  Boolean @default(true)
+
+  @@unique([meetingId, userId])
+}
+
+model DailyLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id])
+  date      DateTime @db.Date
+  whatDid   String
+  hours     Float?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  objectType String?
+  objectId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  authorId  String
+  author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  pinned    Boolean  @default(false)
+}

@@ -1,0 +1,101 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
+
+export async function submitDailyLog(formData: FormData) {
+  const user = await requireUser();
+  const whatDid = String(formData.get("whatDid") || "").trim();
+  if (!whatDid) return;
+  const hoursRaw = String(formData.get("hours") || "");
+  const notes = String(formData.get("notes") || "") || null;
+  const teamId = user.teams[0]
+    ? (await prisma.team.findUnique({ where: { key: user.teams[0].key } }))?.id
+    : undefined;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  await prisma.dailyLog.upsert({
+    where: { userId_date: { userId: user.id, date: today } },
+    update: {
+      whatDid,
+      hours: hoursRaw ? Number(hoursRaw) : null,
+      notes,
+      teamId,
+    },
+    create: {
+      userId: user.id,
+      date: today,
+      whatDid,
+      hours: hoursRaw ? Number(hoursRaw) : null,
+      notes,
+      teamId,
+    },
+  });
+  await logActivity({
+    userId: user.id,
+    action: `${user.firstName} ${user.lastName} submitted daily activity log`,
+    objectType: "DailyLog",
+    objectId: user.id,
+  });
+  revalidatePath("/workspace/daily-log");
+  revalidatePath("/admin/activity");
+}
+
+export async function markNotificationsRead() {
+  const user = await requireUser();
+  await prisma.notification.updateMany({
+    where: { userId: user.id, readAt: null },
+    data: { readAt: new Date() },
+  });
+  revalidatePath("/workspace");
+  revalidatePath("/workspace/notifications");
+}
+
+export async function updateProfile(formData: FormData) {
+  const user = await requireUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      firstName: String(formData.get("firstName") || user.firstName),
+      lastName: String(formData.get("lastName") || user.lastName),
+      phone: String(formData.get("phone") || "") || null,
+    },
+  });
+  revalidatePath("/workspace/profile");
+}
+
+export type PasswordState = { error?: string; success?: string } | undefined;
+
+export async function changePasswordAction(
+  _prev: PasswordState,
+  formData: FormData,
+): Promise<PasswordState> {
+  const user = await requireUser();
+  const current = String(formData.get("currentPassword") || "");
+  const next = String(formData.get("newPassword") || "");
+  const confirm = String(formData.get("confirmPassword") || "");
+  if (next.length < 10 || !/[A-Za-z]/.test(next) || !/[0-9]/.test(next)) {
+    return { error: "New password needs at least 10 characters, a letter, and a number." };
+  }
+  if (next !== confirm) return { error: "New passwords do not match." };
+
+  const full = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!full?.passwordHash) return { error: "No password is set on this account." };
+  const ok = await verifyPassword(current, full.passwordHash);
+  if (!ok) return { error: "Current password is wrong." };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(next), mustChangePassword: false },
+  });
+  await prisma.application.updateMany({
+    where: { acceptedUserId: user.id },
+    data: { issuedTempPassword: null },
+  });
+  revalidatePath("/workspace");
+  revalidatePath("/workspace/profile");
+  return { success: "Password updated." };
+}
