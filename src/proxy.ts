@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 import { SESSION_COOKIE } from "@/lib/constants";
 
 function secret() {
-  const value = process.env.AUTH_SECRET;
+  const value = process.env.AUTH_SECRET?.trim();
   if (!value) return null;
   return new TextEncoder().encode(value);
 }

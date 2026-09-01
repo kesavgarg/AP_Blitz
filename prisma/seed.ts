@@ -94,6 +94,9 @@ async function main() {
     update: {
       role: PermissionRole.FOUNDER,
       isActive: true,
+      passwordHash,
+      firstName: founderName[0] ?? "Kesav",
+      lastName: founderName.slice(1).join(" ") || "Garg",
     },
     create: {
       email: founderEmail,
@@ -104,13 +107,6 @@ async function main() {
       phone: "+1 (404) 212-9019",
     },
   });
-
-  if (!founder.passwordHash) {
-    await prisma.user.update({
-      where: { id: founder.id },
-      data: { passwordHash },
-    });
-  }
 
   for (const team of teams) {
     await prisma.teamMembership.upsert({

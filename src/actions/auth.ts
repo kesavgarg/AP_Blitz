@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
+  authSecret,
   createSession,
   destroySession,
   hashPassword,
@@ -29,26 +30,43 @@ export async function loginAction(
   });
   if (!parsed.success) return { error: "Enter a valid email and password." };
 
+  if (!authSecret()) {
+    console.error("[login] AUTH_SECRET is not set");
+    return { error: "Sign-in is temporarily unavailable. Please try again shortly." };
+  }
+
   const email = parsed.data.email.toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.passwordHash || !user.isActive) {
-    return { error: "Those credentials don't match an active AP Blitz account." };
-  }
-  const ok = await verifyPassword(parsed.data.password, user.passwordHash);
-  if (!ok) return { error: "Those credentials don't match an active AP Blitz account." };
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.passwordHash || !user.isActive) {
+      return { error: "Those credentials don't match an active AP Blitz account." };
+    }
+    const ok = await verifyPassword(parsed.data.password, user.passwordHash);
+    if (!ok) return { error: "Those credentials don't match an active AP Blitz account." };
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-  await createSession(user.id);
-  await logActivity({ userId: user.id, action: `${user.firstName} ${user.lastName} logged in` });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    await createSession(user.id);
+    await logActivity({ userId: user.id, action: `${user.firstName} ${user.lastName} logged in` });
 
-  const next = String(formData.get("next") || "");
-  if (user.role === "FOUNDER") {
-    redirect(next.startsWith("/") ? next : "/admin");
+    const next = String(formData.get("next") || "");
+    const dest = next.startsWith("/") && !next.startsWith("//") ? next : user.role === "FOUNDER" ? "/admin" : "/workspace";
+    redirect(dest);
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err &&
+      "digest" in err &&
+      typeof err.digest === "string" &&
+      err.digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw err;
+    }
+    console.error("[login]", err);
+    return { error: "Could not finish signing you in. Please try again." };
   }
-  redirect(next.startsWith("/") ? next : "/workspace");
 }
 
 export async function logoutAction() {

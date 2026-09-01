@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { SESSION_COOKIE } from "@/lib/constants";
+import { AUTH_SECRET } from "@/lib/env";
 import type { PermissionRole, TeamKey } from "@prisma/client";
 const SESSION_DAYS = 14;
 
@@ -19,8 +20,12 @@ export type SessionUser = {
   teams: { key: TeamKey; name: string; isLeader: boolean }[];
 };
 
+export function authSecret() {
+  return AUTH_SECRET.trim();
+}
+
 function secret() {
-  const value = process.env.AUTH_SECRET;
+  const value = authSecret();
   if (!value) throw new Error("AUTH_SECRET is not set");
   return new TextEncoder().encode(value);
 }
