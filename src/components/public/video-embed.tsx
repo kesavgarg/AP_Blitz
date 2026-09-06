@@ -1,4 +1,22 @@
-import { youtubeIdFromUrl } from "@/lib/utils";
+import { instagramEmbedFromUrl, youtubeIdFromUrl } from "@/lib/utils";
+
+export function ClipEmbed({ url, title }: { url: string; title?: string }) {
+  const ig = instagramEmbedFromUrl(url);
+  if (ig) {
+    return (
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-black">
+        <iframe
+          className="h-[28rem] w-full"
+          src={ig}
+          title={title ?? "AP Blitz reel"}
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  return <VideoEmbed url={url} type="youtube" />;
+}
 
 export function VideoEmbed({
   url,

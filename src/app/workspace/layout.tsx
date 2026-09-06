@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
-import { workspaceForTeam } from "@/lib/rbac";
+import { workspaceForTeam, canAccessChannel } from "@/lib/rbac";
+import { AlertWatcher } from "@/components/workspace/alert-watcher";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -9,13 +10,29 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const unread = await prisma.notification.count({
-    where: { userId: user.id, readAt: null },
+  const channels = await prisma.messageChannel.findMany({
+    include: { members: { select: { userId: true } } },
   });
+  const accessibleIds = channels.filter((c) => canAccessChannel(user, c)).map((c) => c.id);
+  const [unread, unreadMessages] = await Promise.all([
+    prisma.notification.count({
+      where: { userId: user.id, readAt: null },
+    }),
+    accessibleIds.length
+      ? prisma.message.count({
+          where: {
+            channelId: { in: accessibleIds },
+            deletedAt: null,
+            authorId: { not: user.id },
+            reads: { none: { userId: user.id } },
+          },
+        })
+      : Promise.resolve(0),
+  ]);
 
   const items: NavItem[] = [
     { href: "/workspace", label: "Home", icon: "🏠" },
-    { href: "/workspace/messages", label: "Messages", icon: "💬" },
+    { href: "/workspace/messages", label: "Messages", icon: "💬", badge: unreadMessages || undefined },
     { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
     { href: "/workspace/tasks", label: "My Tasks", icon: "✅" },
     { href: "/workspace/team", label: "My Team", icon: "👥" },
@@ -28,19 +45,20 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         { href: "/workspace/video", label: "Video", icon: "🎥" },
         { href: "/workspace/edit", label: "Edit", icon: "✂️" },
         { href: "/workspace/design", label: "Design", icon: "🎨" },
-        { href: "/workspace/seo", label: "SEO", icon: "🔎" },
       ]
-    : user.teams.map((t) => ({
-        href: workspaceForTeam(t.key),
-        label: t.name.replace("AP ", "").split(" ")[0],
-        icon: "🧩",
-      }));
+    : user.teams
+        .filter((t) => t.key !== "SEO")
+        .map((t) => ({
+          href: workspaceForTeam(t.key),
+          label: t.name.replace("AP ", "").split(" ")[0],
+          icon: "🧩",
+        }));
 
   items.push(...workspaces.filter((w, i, arr) => arr.findIndex((x) => x.href === w.href) === i));
   items.push(
     { href: "/workspace/daily-log", label: "Daily Log", icon: "📝" },
     { href: "/workspace/meetings", label: "Meetings", icon: "🎥" },
-    { href: "/workspace/notifications", label: unread ? `Alerts (${unread})` : "Alerts", icon: "🔔" },
+    { href: "/workspace/notifications", label: unread ? `Alerts (${unread})` : "Alerts", icon: "🔔", badge: unread || undefined },
     { href: "/workspace/profile", label: "Profile", icon: "🙂" },
   );
   if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
@@ -56,6 +74,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen bg-[#f3eee4] text-ink">
+      <AlertWatcher baseTitle="AP Blitz" />
       <WorkspaceNav
         items={items}
         name={`${user.firstName} ${user.lastName}`}
@@ -68,7 +87,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           </p>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <Link href="/workspace/notifications" className="rounded-full bg-ink px-3 py-1 text-paper">
-              {unread ? `${unread} new` : "Caught up"}
+              {unread + unreadMessages ? `${unread + unreadMessages} new` : "Caught up"}
             </Link>
           </div>
         </header>

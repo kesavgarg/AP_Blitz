@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { loginAction, type ActionState } from "@/actions/auth";
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, email }: { next?: string; email?: string }) {
   const [state, action, pending] = useActionState(loginAction, undefined as ActionState);
   return (
     <form action={action} className="space-y-4">
@@ -19,6 +19,8 @@ export function LoginForm({ next }: { next?: string }) {
           name="email"
           type="email"
           required
+          defaultValue={email}
+          autoComplete="email"
           className="mt-1.5 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 outline-none focus:border-volt/40"
         />
       </label>

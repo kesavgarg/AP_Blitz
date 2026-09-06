@@ -1,30 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { updateProfile } from "@/actions/logs";
+import { ProfileForm } from "@/components/workspace/profile-form";
 import { ChangePasswordForm } from "@/components/workspace/change-password-form";
 
 export default async function ProfilePage() {
   const user = await requireUser();
   const full = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!full) return null;
   return (
     <div className="max-w-xl">
       <h1 className="font-display text-4xl">Profile</h1>
-      <form action={updateProfile} className="mt-6 space-y-3 rounded-3xl bg-white p-5 shadow-sm">
-        <label className="block text-sm">
-          First name
-          <input name="firstName" defaultValue={full?.firstName} className="mt-1 w-full rounded-xl border px-3 py-2" />
-        </label>
-        <label className="block text-sm">
-          Last name
-          <input name="lastName" defaultValue={full?.lastName} className="mt-1 w-full rounded-xl border px-3 py-2" />
-        </label>
-        <label className="block text-sm">
-          Phone
-          <input name="phone" defaultValue={full?.phone ?? ""} className="mt-1 w-full rounded-xl border px-3 py-2" />
-        </label>
-        <p className="text-sm text-ink/50">{full?.email}</p>
-        <button className="rounded-full bg-ink px-4 py-2 text-paper">Save</button>
-      </form>
+      <ProfileForm
+        user={{
+          firstName: full.firstName,
+          lastName: full.lastName,
+          phone: full.phone,
+          bio: full.bio,
+          email: full.email,
+          imageUrl: full.imageUrl,
+        }}
+      />
       <div className="mt-4 rounded-3xl bg-white p-5 shadow-sm">
         <h2 className="font-display text-2xl">Password</h2>
         {user.mustChangePassword ? (

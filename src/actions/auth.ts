@@ -99,7 +99,7 @@ export async function setupAccountAction(
   await prisma.$transaction([
     prisma.user.update({
       where: { id: invite.userId },
-      data: { passwordHash, isActive: true },
+      data: { passwordHash, isActive: true, mustChangePassword: false },
     }),
     prisma.inviteToken.update({
       where: { id: invite.id },

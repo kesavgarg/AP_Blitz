@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { isFounder, requireUser } from "@/lib/auth";
 import { canAccessChannel, canModerateChannel, channelAudience, sortChannels } from "@/lib/rbac";
-import { deleteMessage, pinMessage, sendMessage, markChannelRead } from "@/actions/messages";
+import { createSubjectChannel, deleteMessage, openDirectMessage, pinMessage, sendMessage, markChannelRead } from "@/actions/messages";
 import { formatDateTime } from "@/lib/utils";
+import { AP_SUBJECTS } from "@/lib/ap-subjects";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Avatar } from "@/components/workspace/avatar";
 
 export default async function ChannelPage({
   params,
@@ -13,56 +16,131 @@ export default async function ChannelPage({
 }) {
   const user = await requireUser();
   const { channelId } = await params;
-  const channel = await prisma.messageChannel.findUnique({ where: { id: channelId } });
-  if (!channel || !canAccessChannel(user, channel.key)) notFound();
+  const channel = await prisma.messageChannel.findUnique({
+    where: { id: channelId },
+    include: { members: { include: { user: true } } },
+  });
+  if (!channel || !canAccessChannel(user, channel)) notFound();
 
-  const [channels, messages] = await Promise.all([
-    prisma.messageChannel.findMany({ orderBy: { name: "asc" } }),
+  const [channels, messages, people] = await Promise.all([
+    prisma.messageChannel.findMany({
+      include: { members: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
+      orderBy: { name: "asc" },
+    }),
     prisma.message.findMany({
       where: { channelId },
       include: { author: true, file: true, pins: true },
       orderBy: { createdAt: "asc" },
       take: 200,
     }),
+    prisma.user.findMany({
+      where: { isActive: true, id: { not: user.id } },
+      orderBy: { firstName: "asc" },
+    }),
   ]);
   await markChannelRead(channelId, user.id);
-  const visible = sortChannels(channels.filter((c) => canAccessChannel(user, c.key)));
-  const canMod = canModerateChannel(user, channel.key);
+  const visible = sortChannels(channels.filter((c) => canAccessChannel(user, c)));
+  const unreadRows = await prisma.message.groupBy({
+    by: ["channelId"],
+    where: {
+      channelId: { in: visible.map((c) => c.id) },
+      deletedAt: null,
+      authorId: { not: user.id },
+      reads: { none: { userId: user.id } },
+    },
+    _count: true,
+  });
+  const unread = Object.fromEntries(unreadRows.map((r) => [r.channelId, r._count]));
+  const canMod = canModerateChannel(user, channel);
+  const teams = visible.filter((c) => (c.kind ?? "TEAM") === "TEAM");
+  const subjects = visible.filter((c) => c.kind === "SUBJECT");
+  const dms = visible.filter((c) => c.kind === "DM");
+  const dmLabel = (c: (typeof visible)[0]) => {
+    const other = c.members.find((m) => m.userId !== user.id)?.user;
+    return other ? `${other.firstName} ${other.lastName}` : "Direct message";
+  };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-      <aside className="rounded-3xl bg-white p-3 shadow-sm">
-        <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-ink/40">
-          Channels
-        </p>
-        {visible.map((c) => (
-          <Link
-            key={c.id}
-            href={`/workspace/messages/${c.id}`}
-            className={`block rounded-xl px-3 py-2 text-sm ${c.id === channel.id ? "bg-ink text-paper" : "hover:bg-black/5"}`}
-          >
-            # {c.key === "GENERAL" ? "General (everyone)" : c.name}
-          </Link>
-        ))}
+    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <aside className="space-y-3 rounded-3xl bg-white p-3 shadow-sm">
+        <ChannelGroup title="Channels">
+          {teams.map((c) => (
+            <ChannelLink
+              key={c.id}
+              id={c.id}
+              active={c.id === channel.id}
+              unread={unread[c.id] ?? 0}
+              label={`# ${c.key === "GENERAL" ? "General (everyone)" : c.name}`}
+            />
+          ))}
+        </ChannelGroup>
+        <ChannelGroup title="AP subjects">
+          {subjects.map((c) => (
+            <ChannelLink
+              key={c.id}
+              id={c.id}
+              active={c.id === channel.id}
+              unread={unread[c.id] ?? 0}
+              label={`# ${c.name}`}
+            />
+          ))}
+          {isFounder(user) || user.role === "TEAM_ADMIN" ? (
+            <form action={createSubjectChannel} className="space-y-1 px-1 pt-1">
+              <select name="apSubject" required className="w-full rounded-lg border px-2 py-1 text-xs">
+                <option value="">New AP subject chat</option>
+                {AP_SUBJECTS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <SubmitButton className="w-full rounded-lg bg-ink py-1 text-[11px] text-paper" pendingLabel="Opening…">
+                Create GC
+              </SubmitButton>
+            </form>
+          ) : null}
+        </ChannelGroup>
+        <ChannelGroup title="Direct messages">
+          {dms.map((c) => (
+            <ChannelLink
+              key={c.id}
+              id={c.id}
+              active={c.id === channel.id}
+              unread={unread[c.id] ?? 0}
+              label={dmLabel(c)}
+            />
+          ))}
+          <form action={openDirectMessage} className="space-y-1 px-1 pt-1">
+            <select name="userId" required className="w-full rounded-lg border px-2 py-1 text-xs">
+              <option value="">Message someone</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
+            <SubmitButton className="w-full rounded-lg border py-1 text-[11px]" pendingLabel="Opening…">
+              Open DM
+            </SubmitButton>
+          </form>
+        </ChannelGroup>
       </aside>
       <section className="flex min-h-[70vh] flex-col rounded-3xl bg-white shadow-sm">
         <div className="border-b border-black/5 px-5 py-4">
-          <h1 className="font-display text-2xl"># {channel.name}</h1>
-          <p className="text-xs text-ink/50">{channelAudience(channel.key)}</p>
+          <h1 className="font-display text-2xl">
+            {channel.kind === "DM" ? dmLabel(channel) : `# ${channel.name}`}
+          </h1>
+          <p className="text-xs text-ink/50">{channelAudience(channel)}</p>
           {channel.key === "ADMIN" ? (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Members cannot see this channel. To message the whole team, use # General or Admin →
-              Messages.
+              Members cannot see this channel. To message the whole team, use # General.
             </p>
           ) : null}
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {messages.map((m) => (
             <article key={m.id} className="flex gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-xs text-volt">
-                {m.author.firstName[0]}
-                {m.author.lastName[0]}
-              </div>
+              <Avatar user={m.author} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">
                   <span className="font-semibold">
@@ -100,15 +178,52 @@ export default async function ChannelPage({
           <textarea
             name="body"
             rows={3}
-            placeholder="Message the team…"
+            placeholder={channel.kind === "DM" ? "Write a private message…" : "Message the team…"}
             className="w-full rounded-2xl border border-black/10 px-3 py-2 text-sm outline-none"
           />
           <div className="mt-2 flex items-center justify-between">
             <input type="file" name="file" className="text-xs" />
-            <button className="rounded-full bg-ink px-4 py-2 text-sm text-paper">Send</button>
+            <SubmitButton className="rounded-full bg-ink px-4 py-2 text-sm text-paper" pendingLabel="Sending…">
+              Send
+            </SubmitButton>
           </div>
         </form>
       </section>
     </div>
+  );
+}
+
+function ChannelGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function ChannelLink({
+  id,
+  label,
+  active,
+  unread,
+}: {
+  id: string;
+  label: string;
+  active: boolean;
+  unread: number;
+}) {
+  return (
+    <Link
+      href={`/workspace/messages/${id}`}
+      className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${active ? "bg-ink text-paper" : "hover:bg-black/5"}`}
+    >
+      <span className="truncate">{label}</span>
+      {unread > 0 ? (
+        <span className="ml-2 grid min-w-5 place-items-center rounded-full bg-coral px-1.5 text-[10px] font-bold text-white">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      ) : null}
+    </Link>
   );
 }

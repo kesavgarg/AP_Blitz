@@ -2,10 +2,15 @@ import Link from "next/link";
 import { getOrgSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
 import { ROLES } from "@/lib/roles";
-import { VideoEmbed } from "@/components/public/video-embed";
+import { ClipEmbed, VideoEmbed } from "@/components/public/video-embed";
+import { prisma } from "@/lib/prisma";
 
 export default async function HomePage() {
-  const [settings, user] = await Promise.all([getOrgSettings(), getSessionUser()]);
+  const [settings, user, clips] = await Promise.all([
+    getOrgSettings(),
+    getSessionUser(),
+    prisma.showcaseClip.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
 
   return (
     <div>
@@ -56,11 +61,11 @@ export default async function HomePage() {
           },
           {
             t: "Built around a pipeline",
-            d: "Idea → script → film → edit → graphics → SEO → publish. Everyone has a lane.",
+            d: "Idea → script → film → edit → graphics → publish. Everyone has a lane.",
           },
           {
             t: "You can actually join",
-            d: "Six roles. Apply once. If you're in, you get a workspace — not just a Discord ping.",
+            d: "Five roles. Apply once. If you're in, you get a workspace — not just a Discord ping.",
           },
         ].map((c) => (
           <div key={c.t} className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
@@ -92,13 +97,35 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section id="examples" className="mx-auto max-w-6xl px-4 pb-20">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">Examples</p>
+        <h2 className="mt-2 font-display text-4xl">What we actually post</h2>
+        <p className="mt-2 max-w-xl text-sm text-muted">
+          Short-form AP recaps — the kind of Instagram reels the team ships.
+        </p>
+        {clips.length ? (
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {clips.map((clip) => (
+              <div key={clip.id}>
+                <ClipEmbed url={clip.url} title={clip.title} />
+                <p className="mt-2 text-sm text-paper/80">{clip.title}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-3xl border border-dashed border-white/15 bg-black/40 p-8 text-sm text-muted">
+            Reels land here once Kesav pastes Instagram links in Admin → Settings.
+          </div>
+        )}
+      </section>
+
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">
               The roster
             </p>
-            <h2 className="mt-2 font-display text-4xl">Six ways to join</h2>
+            <h2 className="mt-2 font-display text-4xl">Five ways to join</h2>
           </div>
           <Link href="/join" className="hidden text-sm text-volt md:inline">
             View all roles →
@@ -128,7 +155,7 @@ export default async function HomePage() {
           <div className="mt-8 grid gap-4 md:grid-cols-4">
             {[
               ["01", "Apply", "Pick a role, fill the form, wait for review."],
-              ["02", "Get in", "If you're accepted, we email a temporary password. Log in — don't apply again."],
+              ["02", "Get in", "If you're accepted, we email a link that opens AP Blitz so you can choose a password."],
               ["03", "Work", "Messages, tasks, calendar, your role workspace."],
               ["04", "Ship", "Content moves through the pipeline and goes live."],
             ].map(([n, t, d]) => (

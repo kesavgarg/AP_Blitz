@@ -26,7 +26,7 @@ export default async function ActivityPage({
       take: 40,
     }),
     prisma.user.findMany({ orderBy: { firstName: "asc" } }),
-    prisma.team.findMany(),
+    prisma.team.findMany({ where: { key: { not: "SEO" } } }),
   ]);
 
   return (

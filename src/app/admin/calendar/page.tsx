@@ -17,7 +17,7 @@ export default async function AdminCalendarPage({
       include: { team: true },
       orderBy: { startAt: "asc" },
     }),
-    prisma.team.findMany({ orderBy: { name: "asc" } }),
+    prisma.team.findMany({ where: { key: { not: "SEO" } }, orderBy: { name: "asc" } }),
   ]);
   const now = new Date();
   const upcoming = events.filter((e) => e.startAt >= now);

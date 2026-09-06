@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
+import { saveUpload } from "@/lib/files";
 
 export async function submitDailyLog(formData: FormData) {
   const user = await requireUser();
@@ -54,17 +55,40 @@ export async function markNotificationsRead() {
   revalidatePath("/workspace/notifications");
 }
 
-export async function updateProfile(formData: FormData) {
+export type ProfileState = { error?: string; success?: string } | undefined;
+
+export async function updateProfile(
+  _prev: ProfileState,
+  formData: FormData,
+): Promise<ProfileState> {
   const user = await requireUser();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      firstName: String(formData.get("firstName") || user.firstName),
-      lastName: String(formData.get("lastName") || user.lastName),
-      phone: String(formData.get("phone") || "") || null,
-    },
-  });
+  const file = formData.get("image");
+  let imageUrl: string | undefined;
+  try {
+    if (file instanceof File && file.size > 0) {
+      const saved = await saveUpload(file, user.id);
+      imageUrl = `/api/files/${saved.id}`;
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        firstName: String(formData.get("firstName") || user.firstName),
+        lastName: String(formData.get("lastName") || user.lastName),
+        phone: String(formData.get("phone") || "") || null,
+        bio: String(formData.get("bio") || "").trim() || null,
+        ...(imageUrl ? { imageUrl } : {}),
+      },
+    });
+  } catch (err) {
+    console.error("[profile]", err);
+    return {
+      error: err instanceof Error ? err.message : "Could not save your profile photo. Try a JPG or PNG.",
+    };
+  }
   revalidatePath("/workspace/profile");
+  revalidatePath("/workspace/team");
+  revalidatePath("/workspace/messages");
+  return { success: imageUrl ? "Photo saved. The team can see it now." : "Profile saved." };
 }
 
 export type PasswordState = { error?: string; success?: string } | undefined;

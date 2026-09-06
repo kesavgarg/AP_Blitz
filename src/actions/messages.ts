@@ -4,18 +4,80 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ChannelKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { isFounder, requireAdmin, requireUser } from "@/lib/auth";
 import { canAccessChannel, canModerateChannel } from "@/lib/rbac";
 import { notify, notifyMany, logActivity } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
+import { slugifySubject } from "@/lib/ap-subjects";
+
+async function loadChannel(id: string) {
+  return prisma.messageChannel.findUnique({
+    where: { id },
+    include: { members: { select: { userId: true } } },
+  });
+}
+
+async function notifyChannelMembers(
+  channel: { id: string; key: ChannelKey | null; kind: string; name: string },
+  authorId: string,
+  title: string,
+  body: string,
+) {
+  let members: { id: string }[] = [];
+  if (channel.kind === "DM") {
+    members = await prisma.channelMember.findMany({
+      where: { channelId: channel.id, userId: { not: authorId } },
+      select: { userId: true },
+    }).then((rows) => rows.map((r) => ({ id: r.userId })));
+  } else if (channel.kind === "SUBJECT" || channel.key === "GENERAL") {
+    members = await prisma.user.findMany({
+      where: { isActive: true, id: { not: authorId } },
+      select: { id: true },
+    });
+  } else if (channel.key === "ADMIN") {
+    members = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        id: { not: authorId },
+        role: { in: ["FOUNDER", "TEAM_ADMIN"] },
+      },
+      select: { id: true },
+    });
+  } else {
+    members = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        id: { not: authorId },
+        OR: [
+          { role: "FOUNDER" },
+          ...(channel.key
+            ? [{ memberships: { some: { team: { channel: { key: channel.key } } } } }]
+            : []),
+        ],
+      },
+      select: { id: true },
+    });
+  }
+
+  await Promise.all(
+    members.slice(0, 80).map((m) =>
+      notify({
+        userId: m.id,
+        title,
+        body,
+        href: `/workspace/messages/${channel.id}`,
+      }),
+    ),
+  );
+}
 
 export async function sendMessage(formData: FormData) {
   const user = await requireUser();
   const channelId = String(formData.get("channelId") || "");
   const body = String(formData.get("body") || "").trim();
   const file = formData.get("file");
-  const channel = await prisma.messageChannel.findUnique({ where: { id: channelId } });
-  if (!channel || !canAccessChannel(user, channel.key)) {
+  const channel = await loadChannel(channelId);
+  if (!channel || !canAccessChannel(user, channel)) {
     return;
   }
   if (!body && !(file instanceof File && file.size > 0)) {
@@ -37,43 +99,71 @@ export async function sendMessage(formData: FormData) {
     },
   });
 
-  const memberWhere =
-    channel.key === "GENERAL"
-      ? { isActive: true, id: { not: user.id } }
-      : channel.key === "ADMIN"
-        ? {
-            isActive: true,
-            id: { not: user.id },
-            role: { in: ["FOUNDER" as const, "TEAM_ADMIN" as const] },
-          }
-        : {
-            isActive: true,
-            id: { not: user.id },
-            OR: [
-              { role: "FOUNDER" as const },
-              { memberships: { some: { team: { channel: { key: channel.key } } } } },
-            ],
-          };
-
-  const members = await prisma.user.findMany({
-    where: memberWhere,
-    select: { id: true },
-  });
-
-  await Promise.all(
-    members.slice(0, 50).map((m) =>
-      notify({
-        userId: m.id,
-        title: `New message in ${channel.name}`,
-        body: `${user.firstName}: ${message.body.slice(0, 80)}`,
-        href: `/workspace/messages/${channel.id}`,
-      }),
-    ),
+  await notifyChannelMembers(
+    channel,
+    user.id,
+    channel.kind === "DM" ? `DM from ${user.firstName}` : `New message in ${channel.name}`,
+    `${user.firstName}: ${message.body.slice(0, 80)}`,
   );
 
   revalidatePath(`/workspace/messages/${channel.id}`);
   revalidatePath("/workspace/messages");
   revalidatePath("/workspace");
+}
+
+export async function createSubjectChannel(formData: FormData) {
+  const user = await requireAdmin();
+  const apSubject = String(formData.get("apSubject") || "").trim();
+  if (!apSubject) return;
+  const slug = `subject:${slugifySubject(apSubject)}`;
+  if (slug === "subject:") return;
+  const existing = await prisma.messageChannel.findFirst({ where: { slug } });
+  if (existing) {
+    redirect(`/workspace/messages/${existing.id}`);
+  }
+  const channel = await prisma.messageChannel.create({
+    data: {
+      slug,
+      kind: "SUBJECT",
+      name: apSubject,
+      apSubject,
+      isPrivate: false,
+    },
+  });
+  await logActivity({
+    userId: user.id,
+    action: `${user.firstName} opened ${apSubject} group chat`,
+    objectType: "MessageChannel",
+    objectId: channel.id,
+  });
+  revalidatePath("/workspace/messages");
+  redirect(`/workspace/messages/${channel.id}`);
+}
+
+export async function openDirectMessage(formData: FormData) {
+  const user = await requireUser();
+  const otherId = String(formData.get("userId") || "");
+  if (!otherId || otherId === user.id) return;
+  const other = await prisma.user.findUnique({ where: { id: otherId } });
+  if (!other || !other.isActive) return;
+
+  const ids = [user.id, other.id].sort();
+  const slug = `dm:${ids.join(":")}`;
+  let channel = await prisma.messageChannel.findFirst({ where: { slug } });
+  if (!channel) {
+    channel = await prisma.messageChannel.create({
+      data: {
+        slug,
+        kind: "DM",
+        name: `${other.firstName} ${other.lastName}`,
+        isPrivate: true,
+        members: {
+          create: [{ userId: user.id }, { userId: other.id }],
+        },
+      },
+    });
+  }
+  redirect(`/workspace/messages/${channel.id}`);
 }
 
 export async function broadcastToTeam(formData: FormData) {
@@ -126,9 +216,9 @@ export async function pinMessage(formData: FormData) {
   const messageId = String(formData.get("messageId") || "");
   const message = await prisma.message.findUnique({
     where: { id: messageId },
-    include: { channel: true },
+    include: { channel: { include: { members: { select: { userId: true } } } } },
   });
-  if (!message || !canModerateChannel(user, message.channel.key)) {
+  if (!message || !canModerateChannel(user, message.channel)) {
     return;
   }
   const existing = await prisma.messagePin.findUnique({
@@ -147,10 +237,10 @@ export async function deleteMessage(formData: FormData) {
   const messageId = String(formData.get("messageId") || "");
   const message = await prisma.message.findUnique({
     where: { id: messageId },
-    include: { channel: true },
+    include: { channel: { include: { members: { select: { userId: true } } } } },
   });
   if (!message) return;
-  if (message.authorId !== user.id && !canModerateChannel(user, message.channel.key)) {
+  if (message.authorId !== user.id && !canModerateChannel(user, message.channel) && !isFounder(user)) {
     return;
   }
   await prisma.message.update({
@@ -177,9 +267,4 @@ export async function markChannelRead(channelId: string, userId: string) {
     data: messages.map((m) => ({ messageId: m.id, userId })),
     skipDuplicates: true,
   });
-}
-
-export async function channelKeyOf(id: string): Promise<ChannelKey | null> {
-  const ch = await prisma.messageChannel.findUnique({ where: { id } });
-  return ch?.key ?? null;
 }

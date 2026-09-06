@@ -6,8 +6,8 @@ import { ApplicationStatus, PermissionRole, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireFounder, hashPassword } from "@/lib/auth";
 import { logActivity, notify } from "@/lib/activity";
-import { sendAcceptance, sendRejection, sendTestEmail } from "@/lib/email";
-import { getRoleByKey } from "@/lib/roles";
+import { appUrl, sendAcceptance, sendRejection, sendTestEmail } from "@/lib/email";
+import { getRoleByKey, isActiveTeamKey } from "@/lib/roles";
 import { getOrgSettings } from "@/lib/settings";
 import { generateTempPassword } from "@/lib/flash";
 
@@ -57,15 +57,22 @@ export async function rejectApplication(formData: FormData) {
 export async function acceptApplication(formData: FormData) {
   const admin = await requireAdmin();
   const id = String(formData.get("id") || "");
-  const role = String(formData.get("role") || "") as TeamKey;
+  const roles = formData
+    .getAll("roles")
+    .map((v) => String(v))
+    .filter(Boolean) as TeamKey[];
+  const fallback = String(formData.get("role") || "") as TeamKey;
+  const selected = (roles.length ? roles : fallback ? [fallback] : []).filter(isActiveTeamKey);
+  if (!selected.length) return;
+  const primary = selected[0];
   const makeLeader = formData.get("makeLeader") === "on";
   const permission: PermissionRole = makeLeader ? "TEAM_ADMIN" : "MEMBER";
 
   const app = await prisma.application.findUnique({ where: { id } });
   if (!app) return;
 
-  const team = await prisma.team.findUnique({ where: { key: role } });
-  if (!team) return;
+  const teams = await prisma.team.findMany({ where: { key: { in: selected } } });
+  if (!teams.length) return;
 
   const tempPassword = generateTempPassword();
   const passwordHash = await hashPassword(tempPassword);
@@ -104,20 +111,33 @@ export async function acceptApplication(formData: FormData) {
     });
   }
 
-  await prisma.teamMembership.upsert({
-    where: { userId_teamId: { userId: userId!, teamId: team.id } },
-    update: { isLeader: makeLeader },
-    create: { userId: userId!, teamId: team.id, isLeader: makeLeader },
-  });
+  for (const team of teams) {
+    await prisma.teamMembership.upsert({
+      where: { userId_teamId: { userId: userId!, teamId: team.id } },
+      update: { isLeader: makeLeader && team.key === primary },
+      create: { userId: userId!, teamId: team.id, isLeader: makeLeader && team.key === primary },
+    });
+  }
 
-  const roleName = getRoleByKey(role)?.name ?? role;
-  const mail = await sendAcceptance(email, app.firstName, roleName, tempPassword);
+  const roleName = selected.map((r) => getRoleByKey(r)?.name ?? r).join(", ");
+  const inviteToken = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().replaceAll("-", "")}`;
+  await prisma.inviteToken.create({
+    data: {
+      userId: userId!,
+      token: inviteToken,
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+  });
+  const site = await appUrl();
+  const setupUrl = `${site}/setup-account?token=${inviteToken}`;
+  const loginUrl = `${site}/login?email=${encodeURIComponent(email)}`;
+  const mail = await sendAcceptance(email, app.firstName, roleName, tempPassword, { setupUrl, loginUrl });
 
   await prisma.application.update({
     where: { id },
     data: {
       status: "ACCEPTED",
-      assignedRole: role,
+      assignedRole: primary,
       reviewedAt: new Date(),
       reviewedById: admin.id,
       acceptedUserId: userId,
@@ -160,6 +180,61 @@ export async function updateMemberRole(formData: FormData) {
     objectId: userId,
   });
   revalidatePath("/admin/team");
+}
+
+export async function addMemberToTeam(formData: FormData) {
+  await requireFounder();
+  const userId = String(formData.get("userId") || "");
+  const teamKey = String(formData.get("teamKey") || "") as TeamKey;
+  if (!isActiveTeamKey(teamKey)) return;
+  const team = await prisma.team.findUnique({ where: { key: teamKey } });
+  if (!userId || !team) return;
+  await prisma.teamMembership.upsert({
+    where: { userId_teamId: { userId, teamId: team.id } },
+    update: {},
+    create: { userId, teamId: team.id },
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
+}
+
+export async function removeMemberFromTeam(formData: FormData) {
+  const founder = await requireFounder();
+  const userId = String(formData.get("userId") || "");
+  const teamId = String(formData.get("teamId") || "");
+  if (!userId || !teamId) return;
+  await prisma.teamMembership.deleteMany({ where: { userId, teamId } });
+  await logActivity({
+    userId: founder.id,
+    action: `${founder.firstName} removed a member from a role`,
+    objectType: "User",
+    objectId: userId,
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
+  revalidatePath("/workspace");
+}
+
+export async function addShowcaseClip(formData: FormData) {
+  await requireFounder();
+  const url = String(formData.get("url") || "").trim();
+  const title = String(formData.get("title") || "").trim() || "AP Blitz reel";
+  if (!url) return;
+  const last = await prisma.showcaseClip.findFirst({ orderBy: { sortOrder: "desc" } });
+  await prisma.showcaseClip.create({
+    data: { url, title, sortOrder: (last?.sortOrder ?? 0) + 1 },
+  });
+  revalidatePath("/");
+  revalidatePath("/admin/settings");
+}
+
+export async function deleteShowcaseClip(formData: FormData) {
+  await requireFounder();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.showcaseClip.delete({ where: { id } });
+  revalidatePath("/");
+  revalidatePath("/admin/settings");
 }
 
 export async function setTeamLeader(formData: FormData) {

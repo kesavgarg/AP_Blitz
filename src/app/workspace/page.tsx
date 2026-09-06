@@ -41,8 +41,9 @@ export default async function WorkspaceHome() {
   const nextMeeting = meetings[0];
 
   const visibleMessages = messages.filter((m) => {
+    if (m.channel.kind === "DM") return false;
     if (user.role === "FOUNDER") return true;
-    if (m.channel.key === "GENERAL") return true;
+    if (m.channel.kind === "SUBJECT" || m.channel.key === "GENERAL") return true;
     return user.teams.some((t) => t.key === m.channel.key);
   });
 

@@ -1,9 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { requireFounder } from "@/lib/auth";
-import { deactivateUser, setTeamLeader, updateMemberRole } from "@/actions/admin";
+import { deactivateUser, setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam } from "@/actions/admin";
+import { isActiveTeamKey, ROLES } from "@/lib/roles";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function AdminTeamPage() {
   await requireFounder();
+  await prisma.teamMembership.deleteMany({ where: { team: { key: "SEO" } } });
+  await prisma.messageChannel.deleteMany({ where: { key: "SEO" } });
+  const seoTeam = await prisma.team.findUnique({ where: { key: "SEO" } });
+  if (seoTeam) {
+    await prisma.contentItem.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.calendarEvent.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.meeting.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.dailyLog.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.designRequest.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.team.delete({ where: { id: seoTeam.id } }).catch(() => undefined);
+  }
   const users = await prisma.user.findMany({
     include: { memberships: { include: { team: true } } },
     orderBy: { firstName: "asc" },
@@ -28,7 +41,10 @@ export default async function AdminTeamPage() {
                 </p>
                 <p className="text-sm text-paper/50">{u.email}</p>
                 <p className="mt-1 text-xs text-paper/40">
-                  {u.memberships.map((m) => `${m.team.name}${m.isLeader ? " (lead)" : ""}`).join(" · ") || "No team"}
+                  {u.memberships
+                    .filter((m) => isActiveTeamKey(m.team.key))
+                    .map((m) => `${m.team.name}${m.isLeader ? " (lead)" : ""}`)
+                    .join(" · ") || "No team"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
@@ -50,16 +66,42 @@ export default async function AdminTeamPage() {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {u.memberships.map((m) => (
-                <form key={m.id} action={setTeamLeader}>
+              {u.memberships
+                .filter((m) => isActiveTeamKey(m.team.key))
+                .map((m) => (
+                  <div key={m.id} className="flex flex-wrap gap-1">
+                    <form action={setTeamLeader}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="teamId" value={m.teamId} />
+                      <input type="hidden" name="isLeader" value={m.isLeader ? "false" : "true"} />
+                      <button className="rounded-full border border-white/15 px-3 py-1 text-xs">
+                        {m.isLeader ? `Remove ${m.team.name} lead` : `Make ${m.team.name} lead`}
+                      </button>
+                    </form>
+                    <form action={removeMemberFromTeam}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="teamId" value={m.teamId} />
+                      <SubmitButton className="rounded-full border border-coral/40 px-3 py-1 text-xs text-coral">
+                        Remove {m.team.name}
+                      </SubmitButton>
+                    </form>
+                  </div>
+                ))}
+              {ROLES.filter((r) => !u.memberships.some((m) => m.team.key === r.key)).length ? (
+                <form action={addMemberToTeam} className="flex gap-1">
                   <input type="hidden" name="userId" value={u.id} />
-                  <input type="hidden" name="teamId" value={m.teamId} />
-                  <input type="hidden" name="isLeader" value={m.isLeader ? "false" : "true"} />
-                  <button className="rounded-full border border-white/15 px-3 py-1 text-xs">
-                    {m.isLeader ? `Remove ${m.team.name} lead` : `Make ${m.team.name} lead`}
-                  </button>
+                  <select name="teamKey" className="rounded-lg bg-ink px-2 py-1 text-xs">
+                    {ROLES.filter((r) => !u.memberships.some((m) => m.team.key === r.key)).map((r) => (
+                      <option key={r.key} value={r.key}>
+                        {r.shortName}
+                      </option>
+                    ))}
+                  </select>
+                  <SubmitButton className="rounded-full border border-volt/40 px-3 py-1 text-xs text-volt">
+                    Add role
+                  </SubmitButton>
                 </form>
-              ))}
+              ) : null}
             </div>
           </article>
         ))}

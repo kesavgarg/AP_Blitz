@@ -42,8 +42,8 @@ export default async function ApplicationDetail({
           </p>
         ) : null}
         <Section t="AP classes" b={app.apClasses} />
-        <Section t="First choice" b={getRoleByKey(app.firstChoice)?.name ?? ""} />
-        <Section t="Second choice" b={getRoleByKey(app.secondChoice)?.name ?? ""} />
+        <Section t="First choice" b={getRoleByKey(app.firstChoice)?.name ?? app.firstChoice} />
+        <Section t="Second choice" b={getRoleByKey(app.secondChoice)?.name ?? app.secondChoice} />
         <Section t="Experience" b={app.experience || "—"} />
         <Section t="Deadline scenario" b={app.deadlineScenario} />
         <Section t="Additional" b={app.additionalInfo || "—"} />
@@ -60,10 +60,10 @@ export default async function ApplicationDetail({
           <div className="rounded-3xl border border-volt/40 bg-volt/10 p-5 text-sm">
             <p className="font-display text-xl text-volt">Accepted {app.firstName} {app.lastName}</p>
             <p className="mt-2">
-              Congratulations email + temporary password{" "}
+              Congratulations email + a setup link{" "}
               {app.lastEmailStatus === "sent" ? "were sent" : "were prepared"} for{" "}
-              <strong>{app.email}</strong>. They log in at /login and land in the workspace
-              (calendar, messages, tasks).
+              <strong>{app.email}</strong>. They should open the link in Safari or Chrome (not
+              Gmail&apos;s preview), choose a password, and land in the workspace.
             </p>
             <p className="mt-3 rounded-xl bg-black/40 px-3 py-2 font-mono text-xs">
               Email: {app.email}
@@ -95,17 +95,25 @@ export default async function ApplicationDetail({
           <form action={acceptApplication} className="rounded-3xl border border-volt/30 bg-navy p-5">
             <h2 className="font-display text-xl">Accept</h2>
             <p className="mt-1 text-sm text-paper/60">
-              Creates their account, emails congratulations + a temporary password to{" "}
-              <strong>{app.email}</strong>, and lets them log in to the workspace.
+              Creates their account and emails <strong>{app.email}</strong> a button that opens
+              AP Blitz so they can choose a password. The email also includes a backup login
+              link and temporary password.
             </p>
             <input type="hidden" name="id" value={app.id} />
-            <select name="role" defaultValue={app.firstChoice} className="mt-3 w-full rounded-xl bg-ink px-3 py-2">
+            <p className="mt-3 text-sm text-paper/70">Put them on every role they should actually do:</p>
+            <div className="mt-2 grid gap-2">
               {ROLES.map((r) => (
-                <option key={r.key} value={r.key}>
+                <label key={r.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="roles"
+                    value={r.key}
+                    defaultChecked={r.key === app.firstChoice}
+                  />
                   {r.name}
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" name="makeLeader" /> Make team lead
             </label>
@@ -115,8 +123,8 @@ export default async function ApplicationDetail({
           </form>
         ) : (
           <p className="rounded-3xl border border-white/10 p-5 text-sm">
-            Accepted{app.assignedRole ? ` as ${getRoleByKey(app.assignedRole)?.name}` : ""}. They
-            can log in with the temporary password that was emailed to {app.email}.
+            Accepted{app.assignedRole ? ` as ${getRoleByKey(app.assignedRole)?.name ?? app.assignedRole}` : ""}. They
+            can open the setup link in their email, or log in with the temporary password sent to {app.email}.
           </p>
         )}
         {app.status !== "REJECTED" ? (

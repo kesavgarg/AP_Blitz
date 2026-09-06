@@ -1,11 +1,40 @@
 import "server-only";
+import { headers } from "next/headers";
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 
 export type SendResult = { sent: boolean; error?: string };
 
-function appUrl() {
-  return process.env.APP_URL ?? "http://localhost:3000";
+function stripSlash(url: string) {
+  return url.replace(/\/$/, "");
+}
+
+function isLocalhost(url: string) {
+  return /localhost|127\.0\.0\.1/i.test(url);
+}
+
+export async function appUrl() {
+  const fromEnv = process.env.APP_URL?.trim();
+  const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const vercel = process.env.VERCEL_URL?.trim();
+
+  let fromRequest = "";
+  try {
+    const h = await headers();
+    const host = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
+    const proto = h.get("x-forwarded-proto") || (isLocalhost(host) ? "http" : "https");
+    if (host) fromRequest = `${proto}://${host}`;
+  } catch {
+    // headers() is unavailable outside a request
+  }
+
+  if (fromEnv && !isLocalhost(fromEnv)) return stripSlash(fromEnv);
+  if (fromRequest && !isLocalhost(fromRequest)) return stripSlash(fromRequest);
+  if (vercelProd) return stripSlash(`https://${vercelProd}`);
+  if (fromEnv) return stripSlash(fromEnv);
+  if (fromRequest) return stripSlash(fromRequest);
+  if (vercel) return stripSlash(`https://${vercel}`);
+  return "http://localhost:3000";
 }
 
 async function mailConfig() {
@@ -38,7 +67,18 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
       secure: port === 465,
       auth: { user, pass },
     });
-    await mailer.sendMail({ from, to, subject, html });
+    const text =
+      html
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    await mailer.sendMail({ from, to, subject, html, text });
     await prisma.outgoingEmail.create({
       data: { to, subject, status: "sent" },
     }).catch((err) => console.error("[email:log-failed]", err));
@@ -62,7 +102,7 @@ function escapeHtml(value: string) {
 }
 
 const wrap = (title: string, body: string) => `
-  <div style="font-family:Outfit,Inter,system-ui,sans-serif;background:#000;padding:32px;color:#f6f3ee;">
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#000;padding:32px;color:#f6f3ee;">
     <div style="max-width:560px;margin:0 auto;background:#111;border-radius:20px;padding:32px;border:1px solid #2a2a2a;">
       <p style="letter-spacing:0.2em;font-size:12px;color:#ff914d;margin:0 0 12px;">AP BLITZ</p>
       <h1 style="font-size:22px;margin:0 0 16px;">${title}</h1>
@@ -70,6 +110,19 @@ const wrap = (title: string, body: string) => `
     </div>
   </div>
 `;
+
+function ctaButton(href: string, label: string) {
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+      <tr>
+        <td align="center" bgcolor="#ff914d" style="border-radius:999px;">
+          <a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#000000;text-decoration:none;">${escapeHtml(label)}</a>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:13px;line-height:1.5;word-break:break-all;color:#9a958a;">If that button does not open from Gmail, copy this link into Safari or Chrome:<br /><a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" style="color:#ff914d;">${escapeHtml(href)}</a></p>
+  `;
+}
 
 export async function sendApplicationReceived(to: string, name: string, applicationId: string) {
   return send(
@@ -86,13 +139,14 @@ export async function sendApplicationReceived(to: string, name: string, applicat
 }
 
 export async function sendAdminApplicationNotice(to: string, applicant: string, applicationId: string) {
+  const dashboardUrl = `${await appUrl()}/admin/applications`;
   return send(
     to,
     `New AP Blitz application: ${applicant}`,
     wrap(
       "New application to review",
       `<p>${escapeHtml(applicant)} just applied (${escapeHtml(applicationId)}).</p>
-       <p><a href="${appUrl()}/admin/applications" style="color:#ff914d;">Open the review dashboard</a></p>`,
+       ${ctaButton(dashboardUrl, "Open the review dashboard")}`,
     ),
   );
 }
@@ -102,8 +156,8 @@ export async function sendAcceptance(
   name: string,
   role: string,
   tempPassword: string,
+  urls: { setupUrl: string; loginUrl: string },
 ) {
-  const loginUrl = `${appUrl()}/login`;
   return send(
     to,
     "You're in — welcome to AP Blitz",
@@ -111,11 +165,11 @@ export async function sendAcceptance(
       "Congratulations — you're accepted",
       `<p>Hey ${escapeHtml(name)},</p>
        <p>You got in. Welcome to AP Blitz as a <strong>${escapeHtml(role)}</strong>.</p>
-       <p>Log in here with the temporary password below. After you sign in you'll land in the team workspace (calendar, messages, tasks, your role page).</p>
-       <p><a href="${loginUrl}" style="display:inline-block;background:#ff914d;color:#000;padding:12px 18px;border-radius:999px;font-weight:700;text-decoration:none;">Log in to AP Blitz</a></p>
+       <p>Tap the button below to open AP Blitz and choose your password. If Gmail preview does not load the site, copy the link under the button into Safari or Chrome.</p>
+       ${ctaButton(urls.setupUrl, "Open AP Blitz")}
+       <p>Or sign in at <a href="${escapeHtml(urls.loginUrl)}" target="_blank" rel="noopener noreferrer" style="color:#ff914d;">${escapeHtml(urls.loginUrl)}</a> with:</p>
        <p><strong>Email:</strong> ${escapeHtml(to)}<br/>
        <strong>Temporary password:</strong> ${escapeHtml(tempPassword)}</p>
-       <p>You can change your password later from Profile.</p>
        <p>— Kesav, AP Blitz</p>`,
     ),
   );
@@ -138,6 +192,7 @@ export async function sendRejection(to: string, name: string, message?: string) 
 }
 
 export async function sendAssignment(to: string, name: string, title: string, href: string) {
+  const openUrl = `${await appUrl()}${href}`;
   return send(
     to,
     `New AP Blitz assignment: ${title}`,
@@ -145,7 +200,7 @@ export async function sendAssignment(to: string, name: string, title: string, hr
       "You've got an assignment",
       `<p>Hey ${escapeHtml(name)},</p>
        <p><strong>${escapeHtml(title)}</strong> was assigned to you.</p>
-       <p><a href="${appUrl()}${href}" style="color:#ff914d;">Open it in the workspace</a></p>`,
+       ${ctaButton(openUrl, "Open it in the workspace")}`,
     ),
   );
 }

@@ -7,9 +7,11 @@ export const dynamic = "force-dynamic";
 
 export default async function MessagesIndex() {
   const user = await requireUser();
-  const channels = await prisma.messageChannel.findMany();
-  const general = channels.find((c) => c.key === "GENERAL" && canAccessChannel(user, c.key));
-  const first = general ?? channels.find((c) => canAccessChannel(user, c.key));
+  const channels = await prisma.messageChannel.findMany({
+    include: { members: { select: { userId: true } } },
+  });
+  const general = channels.find((c) => c.key === "GENERAL" && canAccessChannel(user, c));
+  const first = general ?? channels.find((c) => canAccessChannel(user, c));
   if (first) redirect(`/workspace/messages/${first.id}`);
   return (
     <div>

@@ -29,14 +29,22 @@ const TEAMS: { key: TeamKey; name: string; description: string }[] = [
     name: "Graphic Design",
     description: "Posts, infographics, thumbnails, and brand visuals.",
   },
-  {
-    key: "SEO",
-    name: "SEO",
-    description: "Titles, descriptions, keywords, discoverability.",
-  },
 ];
 
 async function main() {
+  const seoTeam = await prisma.team.findUnique({ where: { key: "SEO" } });
+  if (seoTeam) {
+    await prisma.teamMembership.deleteMany({ where: { teamId: seoTeam.id } });
+    await prisma.messageChannel.deleteMany({ where: { key: "SEO" } });
+    await prisma.contentItem.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.calendarEvent.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.meeting.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.dailyLog.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.designRequest.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
+    await prisma.team.delete({ where: { id: seoTeam.id } }).catch(() => undefined);
+  }
+  await prisma.messageChannel.deleteMany({ where: { key: "SEO" } });
+
   for (const team of TEAMS) {
     await prisma.team.upsert({
       where: { key: team.key },
@@ -56,7 +64,6 @@ async function main() {
     { key: "VIDEO_EDITOR", name: "Video Editors", teamKey: "VIDEO_EDITOR", isPrivate: true },
     { key: "SOCIAL_MEDIA", name: "Social Media", teamKey: "SOCIAL_MEDIA", isPrivate: true },
     { key: "GRAPHIC_DESIGN", name: "Graphic Design", teamKey: "GRAPHIC_DESIGN", isPrivate: true },
-    { key: "SEO", name: "SEO", teamKey: "SEO", isPrivate: true },
   ];
 
   for (const ch of channels) {
@@ -67,6 +74,8 @@ async function main() {
         key: ch.key,
         name: ch.name,
         isPrivate: ch.isPrivate,
+        slug: ch.key,
+        kind: "TEAM" as const,
         teamId: ch.teamKey ? byKey[ch.teamKey].id : undefined,
       },
     });

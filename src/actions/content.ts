@@ -1,12 +1,32 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { ContentStatus, DesignRequestType, ScriptStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isFounder, leadsTeam, onTeam, requireUser } from "@/lib/auth";
 import { logActivity, nextContentId, notify } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 import { sendAssignment } from "@/lib/email";
+
+function isNextRedirect(err: unknown) {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "digest" in err &&
+    typeof err.digest === "string" &&
+    err.digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
+function scriptPath(opts: { id?: string; subject?: string; error?: string }) {
+  const q = new URLSearchParams();
+  if (opts.id) q.set("id", opts.id);
+  if (opts.subject) q.set("subject", opts.subject);
+  if (opts.error) q.set("error", opts.error);
+  const query = q.toString();
+  return query ? `/workspace/scripts?${query}` : "/workspace/scripts";
+}
 
 async function history(contentId: string, userId: string, action: string, from?: string, to?: string) {
   await prisma.contentHistory.create({
@@ -111,47 +131,56 @@ export async function saveScript(formData: FormData) {
   const apUnit = String(formData.get("apUnit") || "") || null;
   const submit = formData.get("submit") === "true";
 
-  if (id) {
-    const script = await prisma.script.findUnique({
-      where: { id },
-      include: { contentItem: true },
-    });
-    if (!script) return;
-    if (script.authorId !== user.id && !isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) {
-      return;
-    }
-    const status: ScriptStatus = submit ? "SUBMITTED" : script.status === "DRAFT" ? "DRAFT" : script.status;
-    await prisma.script.update({
-      where: { id },
-      data: {
-        title,
-        body,
-        apSubject,
-        apUnit,
-        status,
-        submittedAt: submit ? new Date() : script.submittedAt,
-      },
-    });
-    await prisma.contentItem.update({
-      where: { id: script.contentItemId },
-      data: {
-        title,
-        apSubject,
-        apUnit,
-        status: submit ? "SCRIPT_SUBMITTED" : script.contentItem.status,
-      },
-    });
-    if (submit) {
-      await history(script.contentItemId, user.id, "Submitted script", script.contentItem.status, "SCRIPT_SUBMITTED");
-      await logActivity({
-        userId: user.id,
-        action: `${user.firstName} ${user.lastName} submitted Script ${script.contentItem.contentId}`,
-        objectType: "Script",
-        objectId: script.contentItem.contentId,
+  try {
+    if (id) {
+      const script = await prisma.script.findUnique({
+        where: { id },
+        include: { contentItem: true },
       });
+      if (!script) {
+        redirect(scriptPath({ error: "That script is gone.", subject: apSubject ?? undefined }));
+      }
+      if (script.authorId !== user.id && !isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) {
+        redirect(scriptPath({ id, subject: apSubject ?? undefined, error: "You cannot edit this script." }));
+      }
+      const status: ScriptStatus = submit ? "SUBMITTED" : script.status === "DRAFT" ? "DRAFT" : script.status;
+      await prisma.script.update({
+        where: { id },
+        data: {
+          title,
+          body,
+          apSubject,
+          apUnit,
+          status,
+          submittedAt: submit ? new Date() : script.submittedAt,
+        },
+      });
+      await prisma.contentItem.update({
+        where: { id: script.contentItemId },
+        data: {
+          title,
+          apSubject,
+          apUnit,
+          status: submit ? "SCRIPT_SUBMITTED" : script.contentItem.status,
+        },
+      });
+      if (submit) {
+        await history(script.contentItemId, user.id, "Submitted script", script.contentItem.status, "SCRIPT_SUBMITTED");
+        await logActivity({
+          userId: user.id,
+          action: `${user.firstName} ${user.lastName} submitted Script ${script.contentItem.contentId}`,
+          objectType: "Script",
+          objectId: script.contentItem.contentId,
+        });
+      }
+      revalidatePath("/workspace/scripts");
+      revalidatePath("/admin/content");
+      redirect(scriptPath({ id, subject: apSubject ?? undefined }));
     }
-  } else {
-    if (!onTeam(user, "SCRIPT_WRITER") && !isFounder(user)) return;
+
+    if (!onTeam(user, "SCRIPT_WRITER") && !isFounder(user)) {
+      redirect(scriptPath({ error: "You need the Script Writer role to create scripts." }));
+    }
     const contentId = await nextContentId();
     const team = await prisma.team.findUnique({ where: { key: "SCRIPT_WRITER" } });
     const item = await prisma.contentItem.create({
@@ -177,9 +206,56 @@ export async function saveScript(formData: FormData) {
       },
     });
     await history(item.id, user.id, submit ? "Created and submitted script" : "Created script draft");
+    const created = await prisma.script.findUnique({ where: { contentItemId: item.id } });
+    revalidatePath("/workspace/scripts");
+    revalidatePath("/admin/content");
+    redirect(scriptPath({ id: created?.id, subject: apSubject ?? undefined }));
+  } catch (err) {
+    if (isNextRedirect(err)) throw err;
+    console.error("[saveScript]", err);
+    redirect(
+      scriptPath({
+        id: id || undefined,
+        subject: apSubject ?? undefined,
+        error: err instanceof Error ? err.message : "Could not save that script.",
+      }),
+    );
   }
-  revalidatePath("/workspace/scripts");
-  revalidatePath("/admin/content");
+}
+
+export async function deleteScript(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("id") || "");
+  try {
+    const script = await prisma.script.findUnique({
+      where: { id },
+      include: { contentItem: { include: { video: true, socialIdea: true } } },
+    });
+    if (!script) {
+      redirect(scriptPath({ error: "That script is already gone." }));
+    }
+    if (script.authorId !== user.id && !isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) {
+      redirect(scriptPath({ id, subject: script.apSubject ?? undefined, error: "You cannot delete this script." }));
+    }
+    const subject = script.apSubject ?? "";
+    await prisma.script.delete({ where: { id } });
+    if (!script.contentItem.video && !script.contentItem.socialIdea) {
+      await prisma.contentItem.delete({ where: { id: script.contentItemId } }).catch(() => undefined);
+    }
+    await logActivity({
+      userId: user.id,
+      action: `${user.firstName} deleted script ${script.title}`,
+      objectType: "Script",
+      objectId: id,
+    });
+    revalidatePath("/workspace/scripts");
+    revalidatePath("/admin/content");
+    redirect(scriptPath({ subject: subject || undefined }));
+  } catch (err) {
+    if (isNextRedirect(err)) throw err;
+    console.error("[deleteScript]", err);
+    redirect(scriptPath({ id, error: err instanceof Error ? err.message : "Could not delete that script." }));
+  }
 }
 
 export async function reviewScript(formData: FormData) {
@@ -385,16 +461,10 @@ export async function reviewEdit(formData: FormData) {
       where: { id: video.contentItemId },
       data: { status: "GRAPHICS" },
     });
-    await prisma.seoRequest.upsert({
-      where: { contentItemId: video.contentItemId },
-      update: {},
-      create: { contentItemId: video.contentItemId, status: "draft" },
-    });
     await history(video.contentItemId, user.id, "Approved edit", video.contentItem.status, "GRAPHICS");
   }
   revalidatePath("/admin/content");
   revalidatePath("/workspace/edit");
-  revalidatePath("/workspace/seo");
 }
 
 export async function createDesignRequest(formData: FormData) {
@@ -449,42 +519,6 @@ export async function submitDesign(formData: FormData) {
     objectId: id,
   });
   revalidatePath("/workspace/design");
-  revalidatePath("/admin/content");
-}
-
-export async function saveSeo(formData: FormData) {
-  const user = await requireUser();
-  if (!onTeam(user, "SEO") && !isFounder(user)) return;
-  const id = String(formData.get("id") || "");
-  const submit = formData.get("submit") === "true";
-  const seo = await prisma.seoRequest.findUnique({
-    where: { id },
-    include: { contentItem: true },
-  });
-  if (!seo) return;
-  await prisma.seoRequest.update({
-    where: { id },
-    data: {
-      specialistId: user.id,
-      title: String(formData.get("title") || "") || null,
-      altTitles: String(formData.get("altTitles") || "") || null,
-      keywords: String(formData.get("keywords") || "") || null,
-      description: String(formData.get("description") || "") || null,
-      hashtags: String(formData.get("hashtags") || "") || null,
-      searchTerms: String(formData.get("searchTerms") || "") || null,
-      notes: String(formData.get("notes") || "") || null,
-      status: submit ? "submitted" : "draft",
-      submittedAt: submit ? new Date() : seo.submittedAt,
-    },
-  });
-  if (submit) {
-    await prisma.contentItem.update({
-      where: { id: seo.contentItemId },
-      data: { status: "FINAL_REVIEW" },
-    });
-    await history(seo.contentItemId, user.id, "Submitted SEO", seo.contentItem.status, "FINAL_REVIEW");
-  }
-  revalidatePath("/workspace/seo");
   revalidatePath("/admin/content");
 }
 

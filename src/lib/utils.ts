@@ -24,6 +24,13 @@ export function formatDateTime(date: Date | string) {
   });
 }
 
+export function instagramEmbedFromUrl(url: string) {
+  if (!url) return null;
+  const match = url.match(/instagram\.com\/(reel|p|tv)\/([A-Za-z0-9_-]+)/i);
+  if (!match) return null;
+  return `https://www.instagram.com/${match[1]}/${match[2]}/embed`;
+}
+
 export function youtubeIdFromUrl(url: string) {
   if (!url) return null;
   const patterns = [
@@ -59,7 +66,7 @@ export const CONTENT_STATUS_LABELS: Record<string, string> = {
   EDIT_SUBMITTED: "Edit submitted",
   EDIT_NEEDS_REVISION: "Edit needs revision",
   GRAPHICS: "Graphics",
-  SEO: "SEO",
+  SEO: "Graphics",
   FINAL_REVIEW: "Final review",
   READY_TO_PUBLISH: "Ready to publish",
   PUBLISHED: "Published",
@@ -71,7 +78,6 @@ export const PIPELINE_STEPS = [
   { key: "VIDEO", label: "Record" },
   { key: "EDIT", label: "Edit" },
   { key: "GRAPHICS", label: "Graphics" },
-  { key: "SEO", label: "SEO" },
   { key: "REVIEW", label: "Review" },
   { key: "PUBLISHED", label: "Published" },
 ] as const;
@@ -81,9 +87,8 @@ export function pipelineIndex(status: string) {
   if (status === "IDEA_APPROVED" || status.startsWith("SCRIPT")) return 1;
   if (status.startsWith("VIDEO")) return 2;
   if (status === "WAITING_FOR_EDITOR" || status.startsWith("EDIT")) return 3;
-  if (status === "GRAPHICS") return 4;
-  if (status === "SEO") return 5;
-  if (status === "FINAL_REVIEW" || status === "READY_TO_PUBLISH") return 6;
-  if (status === "PUBLISHED") return 7;
+  if (status === "GRAPHICS" || status === "SEO") return 4;
+  if (status === "FINAL_REVIEW" || status === "READY_TO_PUBLISH") return 5;
+  if (status === "PUBLISHED") return 6;
   return 0;
 }

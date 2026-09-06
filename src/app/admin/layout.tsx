@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { BrandMark } from "@/components/brand";
 import { getOrgSettings } from "@/lib/settings";
+import { AlertWatcher } from "@/components/workspace/alert-watcher";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const emailReady = Boolean(settings.smtpHost && settings.smtpUser && settings.smtpPass);
   return (
     <div className="mesh min-h-screen text-paper">
+      <AlertWatcher baseTitle="Admin · AP Blitz" />
       <div className="border-b border-white/10 bg-black/50 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-6 overflow-x-auto px-4 py-2">
           <BrandMark />

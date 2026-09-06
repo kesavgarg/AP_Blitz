@@ -42,7 +42,9 @@ export default async function CalendarPage({
     include: { team: true, assignees: true },
     orderBy: { startAt: "asc" },
   });
-  const teams = await prisma.team.findMany({ orderBy: { name: "asc" } });
+  const teams = (await prisma.team.findMany({ orderBy: { name: "asc" } })).filter(
+    (t) => t.key !== "SEO",
+  );
 
   const visible = events.filter((e) => {
     if (isFounder(user)) return true;

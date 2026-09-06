@@ -59,6 +59,41 @@ h3,
   background-image: none;
 }
 
+a,
+button,
+summary,
+select,
+label,
+[role="button"],
+[type="submit"],
+[type="button"],
+.btn-press {
+  -webkit-tap-highlight-color: rgba(255, 145, 77, 0.35);
+  touch-action: manipulation;
+  transition:
+    transform 90ms ease,
+    filter 90ms ease,
+    opacity 90ms ease,
+    background-color 90ms ease,
+    box-shadow 90ms ease;
+}
+a:active,
+button:not(:disabled):active,
+summary:active,
+select:active,
+label:active,
+[role="button"]:active,
+[type="submit"]:not(:disabled):active,
+[type="button"]:not(:disabled):active,
+.btn-press:not(:disabled):active,
+.is-pressed {
+  transform: scale(0.97);
+  filter: brightness(1.28);
+}
+button:disabled,
+.btn-press:disabled {
+  opacity: 0.55;
+}
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

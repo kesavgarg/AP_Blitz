@@ -15,7 +15,7 @@ export default async function AdminContentPage() {
     <div>
       <h1 className="font-display text-4xl">Content pipeline</h1>
       <p className="mt-2 text-paper/60">
-        Idea → script → record → edit → graphics → SEO → review → publish.
+        Idea → script → record → edit → graphics → review → publish.
       </p>
       <div className="mt-6 space-y-3">
         {items.map((item) => (

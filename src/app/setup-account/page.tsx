@@ -17,6 +17,10 @@ export default async function SetupPage({
         <p className="mt-2 text-sm text-muted">
           Choose a password and you&apos;ll drop into the AP Blitz workspace.
         </p>
+        <p className="mt-3 text-xs text-muted">
+          Opened this from Gmail? If the page looks blank, copy the link into Safari or Chrome
+          — Gmail&apos;s in-app preview sometimes will not finish sign-in.
+        </p>
         <div className="mt-8">
           {token ? (
             <SetupForm token={token} />

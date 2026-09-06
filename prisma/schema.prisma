@@ -110,6 +110,12 @@ enum ChannelKey {
   ADMIN
 }
 
+enum ChannelKind {
+  TEAM
+  SUBJECT
+  DM
+}
+
 model User {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -121,6 +127,7 @@ model User {
   isActive     Boolean        @default(true)
   mustChangePassword Boolean  @default(false)
   imageUrl     String?
+  bio          String?        @db.Text
   gradeLevel   GradeLevel?
   highSchool   String?
   cityCounty   String?
@@ -148,6 +155,7 @@ model User {
   eventAssignees     CalendarEventAssignee[]
   inviteTokens       InviteToken[]
   messageReads       MessageRead[]
+  channelMemberships ChannelMember[]
   createdEvents      CalendarEvent[]          @relation("EventCreator")
   socialIdeas        SocialIdea[]
   seoRequests        SeoRequest[]
@@ -263,14 +271,29 @@ model OutgoingEmail {
 }
 
 model MessageChannel {
-  id          String     @id @default(cuid())
-  key         ChannelKey @unique
+  id          String       @id @default(cuid())
+  key         ChannelKey?  @unique
+  slug        String?
+  kind        ChannelKind  @default(TEAM)
   name        String
   description String?
-  teamId      String?    @unique
-  team        Team?      @relation(fields: [teamId], references: [id])
-  isPrivate   Boolean    @default(true)
+  apSubject   String?
+  teamId      String?      @unique
+  team        Team?        @relation(fields: [teamId], references: [id])
+  isPrivate   Boolean      @default(true)
   messages    Message[]
+  members     ChannelMember[]
+}
+
+model ChannelMember {
+  id        String         @id @default(cuid())
+  channelId String
+  userId    String
+  createdAt DateTime       @default(now())
+  channel   MessageChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
 }
 
 model Message {
@@ -454,6 +477,7 @@ model FileAsset {
   designRequestId String?
   designRequest   DesignRequest?  @relation(fields: [designRequestId], references: [id])
   messages        Message[]
+  bytes           Bytes?
   createdAt       DateTime        @default(now())
 }
 
@@ -574,4 +598,12 @@ model Announcement {
   author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
   createdAt DateTime @default(now())
   pinned    Boolean  @default(false)
+}
+
+model ShowcaseClip {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }

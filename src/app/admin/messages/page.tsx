@@ -24,7 +24,8 @@ export default async function AdminMessagesPage({
         <h1 className="font-display text-4xl">Message the team</h1>
         <p className="mt-2 text-sm text-paper/60">
           This posts to <strong># General</strong> (every member can see it), pins it on their
-          workspace home, and sends them an in-app alert.
+          workspace home, and sends them an in-app alert. For one person, open their DM from
+          Messages or My Team. For an AP class chat, create it under Messages → AP subjects.
         </p>
         {sent ? (
           <p className="mt-3 rounded-xl bg-volt/15 px-3 py-2 text-sm text-volt">

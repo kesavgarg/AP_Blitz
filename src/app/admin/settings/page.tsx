@@ -1,10 +1,13 @@
 import { requireFounder } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/settings";
-import { saveOrgSettings, testEmailSettings } from "@/actions/admin";
+import { prisma } from "@/lib/prisma";
+import { saveOrgSettings, testEmailSettings, addShowcaseClip, deleteShowcaseClip } from "@/actions/admin";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function SettingsPage() {
   await requireFounder();
   const s = await getOrgSettings();
+  const clips = await prisma.showcaseClip.findMany({ orderBy: { sortOrder: "asc" } });
   const emailReady = Boolean(s.smtpHost && s.smtpUser && s.smtpPass);
   return (
     <div className="max-w-2xl">
@@ -59,6 +62,29 @@ export default async function SettingsPage() {
           />
         </label>
         <button className="rounded-full bg-volt px-4 py-2 font-semibold text-ink">Save settings</button>
+      </form>
+
+      <form action={addShowcaseClip} className="mt-4 space-y-3 rounded-3xl border border-white/10 bg-navy p-5">
+        <h2 className="font-display text-2xl">Homepage examples</h2>
+        <p className="text-sm text-paper/60">
+          Paste Instagram reel links (or YouTube shorts) so visitors can see what AP Blitz actually posts.
+        </p>
+        <Field name="title" label="Title" defaultValue="" />
+        <Field name="url" label="Instagram reel / YouTube URL" defaultValue="" />
+        <SubmitButton className="rounded-full border border-white/20 px-4 py-2 text-sm">Add example</SubmitButton>
+        <div className="space-y-2 pt-2">
+          {clips.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl bg-ink px-3 py-2 text-sm">
+              <span className="truncate">
+                {c.title} · {c.url}
+              </span>
+              <form action={deleteShowcaseClip}>
+                <input type="hidden" name="id" value={c.id} />
+                <SubmitButton className="text-xs text-coral">Remove</SubmitButton>
+              </form>
+            </div>
+          ))}
+        </div>
       </form>
 
       <form action={testEmailSettings} className="mt-4 space-y-3 rounded-3xl border border-white/10 bg-navy p-5">

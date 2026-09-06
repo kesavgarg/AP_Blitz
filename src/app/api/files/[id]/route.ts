@@ -26,7 +26,20 @@ export async function GET(
     file.uploadedById === user.id ||
     user.role === "TEAM_ADMIN" ||
     (file.contentItem?.team && onTeam(user, file.contentItem.team.key));
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const avatarOwner = allowed
+    ? null
+    : await prisma.user.findFirst({ where: { imageUrl: `/api/files/${id}` }, select: { id: true } });
+  if (!allowed && !avatarOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const headers = {
+    "Content-Type": file.mimeType,
+    "Content-Disposition": `inline; filename="${file.filename.replace(/"/g, "")}"`,
+    "Cache-Control": "private, max-age=86400",
+  };
+
+  if (file.bytes && file.bytes.length > 0) {
+    return new NextResponse(new Uint8Array(file.bytes), { headers });
+  }
 
   try {
     await stat(file.path);
@@ -35,10 +48,5 @@ export async function GET(
   }
   const stream = createReadStream(file.path);
   const web = Readable.toWeb(stream) as ReadableStream;
-  return new NextResponse(web, {
-    headers: {
-      "Content-Type": file.mimeType,
-      "Content-Disposition": `inline; filename="${file.filename.replace(/"/g, "")}"`,
-    },
-  });
+  return new NextResponse(web, { headers });
 }

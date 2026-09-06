@@ -12,6 +12,7 @@ export function PublicHeader({
   const [open, setOpen] = useState(false);
   const links = [
     { href: "/#about", label: "About" },
+    { href: "/#examples", label: "Examples" },
     { href: "/#video", label: "The video" },
     { href: "/join", label: "Roles" },
     { href: "/apply", label: "Apply" },

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: string };
+export type NavItem = { href: string; label: string; icon: string; badge?: number };
 
 export function WorkspaceNav({
   items,
@@ -39,7 +39,12 @@ export function WorkspaceNav({
                 )}
               >
                 <span>{item.icon}</span>
-                {item.label}
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge ? (
+                  <span className="grid min-w-5 place-items-center rounded-full bg-coral px-1.5 text-[10px] font-bold text-white">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -62,7 +67,14 @@ export function WorkspaceNav({
                 active ? "text-ink" : "text-ink/50",
               )}
             >
-              <span className="text-base">{item.icon}</span>
+              <span className="relative text-base">
+                {item.icon}
+                {item.badge ? (
+                  <span className="absolute -right-2 -top-1 grid min-w-4 place-items-center rounded-full bg-coral px-1 text-[9px] font-bold text-white">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </span>
+                ) : null}
+              </span>
               {item.label}
             </Link>
           );

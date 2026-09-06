@@ -5,8 +5,7 @@ export type RoleSlug =
   | "script-writer"
   | "video-editor"
   | "social-media"
-  | "graphic-designer"
-  | "seo";
+  | "graphic-designer";
 
 export type RoleContent = {
   slug: RoleSlug;
@@ -145,7 +144,7 @@ export const ROLES: RoleContent[] = [
       "Working against real posting deadlines",
     ],
     collaboration:
-      "Creators upload source footage. You edit, caption, and pace it. Graphic design may send overlays or thumbnails. SEO needs the final cut to write titles that match what actually shipped.",
+      "Creators upload source footage. You edit, caption, and pace it. Graphic design may send overlays or thumbnails.",
     expectations: [
       "Download source files from the workspace",
       "Upload the finished edit where the team can review it",
@@ -245,52 +244,13 @@ export const ROLES: RoleContent[] = [
       "Build a 5-slide carousel from an approved outline",
     ],
   },
-  {
-    slug: "seo",
-    key: "SEO",
-    name: "SEO Specialist",
-    shortName: "SEO",
-    tagline: "Get AP Blitz in front of students who are already searching.",
-    description:
-      "Works on titles, descriptions, keywords, discoverability, and search optimization.",
-    accent: "#34d399",
-    emoji: "🔎",
-    weekly:
-      "Metadata for every piece of content moving toward publish — titles, descriptions, keywords, hashtags.",
-    responsibilities: [
-      "Creating optimized titles",
-      "Researching keywords",
-      "Writing descriptions",
-      "Optimizing YouTube content",
-      "Researching search trends",
-      "Helping content reach more students",
-      "Tracking performance",
-    ],
-    skills: [
-      "Curiosity about search and YouTube",
-      "Clear writing",
-      "Comfort researching what students actually type",
-      "Attention to detail",
-    ],
-    learn: [
-      "YouTube and Instagram discoverability",
-      "Keyword research for education",
-      "How packaging changes whether content gets found",
-    ],
-    collaboration:
-      "Once a video is close to done, you write the title, alts, description, hashtags, and search terms. Admin reviews, then it goes out with a posting date on the calendar.",
-    expectations: [
-      "Don't guess — look up what students search",
-      "Submit recommendations in the SEO workspace",
-      "Keep titles accurate to the actual video",
-    ],
-    examples: [
-      "Write 3 title options for an APUSH Reconstruction reel",
-      "Build a description + hashtag set for an AP Calc video",
-      "Research search terms for 'how to write a DBQ'",
-    ],
-  },
 ];
+
+export const RETIRED_TEAM_KEYS: TeamKey[] = ["SEO"];
+
+export function isActiveTeamKey(key: TeamKey) {
+  return !RETIRED_TEAM_KEYS.includes(key);
+}
 
 export function getRoleBySlug(slug: string) {
   return ROLES.find((role) => role.slug === slug) ?? null;

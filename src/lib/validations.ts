@@ -7,7 +7,6 @@ export const teamKeyEnum = z.enum([
   "VIDEO_EDITOR",
   "SOCIAL_MEDIA",
   "GRAPHIC_DESIGN",
-  "SEO",
 ]);
 export const yesNo = z.enum(["YES", "NO"]);
 
