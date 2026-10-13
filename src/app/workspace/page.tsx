@@ -26,7 +26,11 @@ export default async function WorkspaceHome() {
       orderBy: { startAt: "asc" },
       take: 3,
     }),
-    prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
+    prisma.announcement.findMany({
+      where: { archivedAt: null, audience: { not: "BLITZERS" } },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    }),
     prisma.message.findMany({
       where: { deletedAt: null },
       include: { author: true, channel: true },

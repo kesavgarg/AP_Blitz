@@ -230,6 +230,61 @@ export async function sendDeadlineReminder(to: string, name: string, title: stri
   );
 }
 
+export async function sendWelcomeBlitzer(to: string, name: string) {
+  const library = `${await appUrl()}/videos`;
+  return send(
+    to,
+    "You're a Blitzer",
+    wrap(
+      "Welcome to AP Blitz",
+      `<p>Hey ${escapeHtml(name)},</p>
+       <p>Your Blitzer account is ready. Watch AP videos, save the ones you want to come back to, and request topics you want explained.</p>
+       <p>This is a study account. It is not a team application, and nobody has to approve it.</p>
+       ${ctaButton(library, "Watch videos")}`,
+    ),
+  );
+}
+
+export async function sendVerificationEmail(to: string, name: string, link: string) {
+  return send(
+    to,
+    "Confirm your AP Blitz email",
+    wrap(
+      "Confirm your email",
+      `<p>Hey ${escapeHtml(name)},</p>
+       <p>Tap below to confirm this is your email. You can keep using AP Blitz either way.</p>
+       ${ctaButton(link, "Confirm email")}`,
+    ),
+  );
+}
+
+export async function sendPasswordReset(to: string, name: string, link: string) {
+  return send(
+    to,
+    "Reset your AP Blitz password",
+    wrap(
+      "Reset your password",
+      `<p>Hey ${escapeHtml(name)},</p>
+       <p>This link expires in one hour. If you didn't ask for it, you can ignore this email.</p>
+       ${ctaButton(link, "Choose a new password")}`,
+    ),
+  );
+}
+
+export async function sendBlitzerPromoted(to: string, name: string, role: string, loginUrl: string) {
+  return send(
+    to,
+    "You're on the AP Blitz team",
+    wrap(
+      "Your application was accepted",
+      `<p>Hey ${escapeHtml(name)},</p>
+       <p>You're in as a <strong>${escapeHtml(role)}</strong>. Your Blitzer password still works — sign in and you'll land in the team workspace.</p>
+       <p>Being a Blitzer did not put you on the team. This acceptance did.</p>
+       ${ctaButton(loginUrl, "Log in")}`,
+    ),
+  );
+}
+
 export async function sendTestEmail(to: string) {
   return send(
     to,

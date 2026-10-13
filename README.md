@@ -57,6 +57,24 @@ Change the founder password before this is public.
 
 Paste a YouTube URL in **Admin → Settings**. The homepage embed updates immediately. Direct `.mp4` URLs work too.
 
+## Phone notifications
+
+Web push needs three environment variables. Until they are set, in-app notifications still work and the notifications page explains that phone delivery is not configured.
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+```
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:hello@apblitz.org
+```
+
+Do not put the private key in any `NEXT_PUBLIC_` variable. iPhone web push only works after the site is added to the Home Screen, on a supported iOS version.
+
+The welcome popup's Instagram button uses the profile URL saved in Admin → Settings. Leave it blank rather than inventing a handle.
+
 ## Email
 
 Without SMTP, confirmations still send — they print to the terminal. Set:

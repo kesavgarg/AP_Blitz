@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isFounder, requireUser } from "@/lib/auth";
-import { notify, logActivity } from "@/lib/activity";
+import { notify, notifyMany, logActivity } from "@/lib/activity";
 import { sendMeetingInvite } from "@/lib/email";
 import { formatDateTime } from "@/lib/utils";
 
@@ -60,6 +60,8 @@ export async function createMeeting(formData: FormData) {
       title: "Meeting invite",
       body: title,
       href: "/workspace/meetings",
+      kind: "meetings",
+      dedupeKey: `meeting:${meeting.id}`,
     });
     await sendMeetingInvite(
       a.user.email,
@@ -85,18 +87,19 @@ export async function createAnnouncement(formData: FormData) {
   const title = String(formData.get("title") || "").trim();
   const body = String(formData.get("body") || "").trim();
   if (!title || !body) return;
-  await prisma.announcement.create({
-    data: { title, body, authorId: user.id, pinned: formData.get("pinned") === "on" },
+  const created = await prisma.announcement.create({
+    data: { title, body, authorId: user.id, pinned: formData.get("pinned") === "on", audience: "TEAM" },
   });
-  const users = await prisma.user.findMany({ where: { isActive: true }, select: { id: true } });
-  await prisma.notification.createMany({
-    data: users.map((u) => ({
-      userId: u.id,
-      title: "New announcement",
-      body: title,
-      href: "/workspace",
-    })),
+  const users = await prisma.user.findMany({
+    where: { isActive: true, role: { in: ["FOUNDER", "TEAM_ADMIN", "MEMBER"] }, id: { not: user.id } },
+    select: { id: true },
   });
+  await notifyMany(
+    users.map((u) => u.id),
+    { title: "New announcement", body: title, href: "/workspace/announcements" },
+    { kind: "announcements", dedupeKey: `announcement:${created.id}` },
+  );
+  await prisma.announcement.update({ where: { id: created.id }, data: { notifiedAt: new Date() } });
   revalidatePath("/workspace");
   revalidatePath("/admin");
 }

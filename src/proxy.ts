@@ -13,6 +13,7 @@ export async function proxy(request: NextRequest) {
   const needsAuth =
     pathname.startsWith("/workspace") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/student") ||
     pathname.startsWith("/api/files") ||
     pathname.startsWith("/api/upload");
 
@@ -41,5 +42,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/workspace/:path*", "/admin/:path*", "/api/files/:path*", "/api/upload/:path*"],
+  matcher: ["/workspace/:path*", "/admin/:path*", "/student/:path*", "/api/files/:path*", "/api/upload/:path*"],
 };

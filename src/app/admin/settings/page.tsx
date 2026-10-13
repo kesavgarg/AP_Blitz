@@ -37,6 +37,7 @@ export default async function SettingsPage() {
           </select>
         </label>
         <Field name="defaultMeetingLink" label="Default meeting link" defaultValue={s.defaultMeetingLink} />
+        <Field name="instagramUrl" label="Instagram profile URL (https://www.instagram.com/...)" defaultValue={s.instagramUrl} />
 
         <h2 className="pt-4 font-display text-2xl">Email delivery</h2>
         <p className="text-sm text-paper/60">

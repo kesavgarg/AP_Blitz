@@ -172,8 +172,8 @@ export async function broadcastToTeam(formData: FormData) {
   const body = String(formData.get("body") || "").trim();
   if (!title || !body) return;
 
-  await prisma.announcement.create({
-    data: { title, body, authorId: user.id, pinned: true },
+  const created = await prisma.announcement.create({
+    data: { title, body, authorId: user.id, pinned: true, audience: "TEAM", notifiedAt: new Date() },
   });
 
   const general = await prisma.messageChannel.findUnique({ where: { key: "GENERAL" } });
@@ -188,7 +188,11 @@ export async function broadcastToTeam(formData: FormData) {
   }
 
   const members = await prisma.user.findMany({
-    where: { isActive: true, id: { not: user.id } },
+    where: {
+      isActive: true,
+      id: { not: user.id },
+      role: { in: ["FOUNDER", "TEAM_ADMIN", "MEMBER"] },
+    },
     select: { id: true },
   });
   await notifyMany(
@@ -198,6 +202,7 @@ export async function broadcastToTeam(formData: FormData) {
       body: body.slice(0, 160),
       href: general ? `/workspace/messages/${general.id}` : "/workspace",
     },
+    { kind: "teamMessages", dedupeKey: `broadcast:${created.id}` },
   );
   await logActivity({
     userId: user.id,

@@ -6,9 +6,10 @@ import { ApplicationStatus, PermissionRole, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireFounder, hashPassword } from "@/lib/auth";
 import { logActivity, notify } from "@/lib/activity";
-import { appUrl, sendAcceptance, sendRejection, sendTestEmail } from "@/lib/email";
+import { appUrl, sendAcceptance, sendBlitzerPromoted, sendRejection, sendTestEmail } from "@/lib/email";
 import { getRoleByKey, isActiveTeamKey } from "@/lib/roles";
 import { getOrgSettings } from "@/lib/settings";
+import { cleanInstagramUrl } from "@/lib/videos";
 import { generateTempPassword } from "@/lib/flash";
 
 export async function updateApplicationStatus(formData: FormData) {
@@ -80,6 +81,7 @@ export async function acceptApplication(formData: FormData) {
 
   const existing = await prisma.user.findUnique({ where: { email } });
   let userId = existing?.id;
+  const keepBlitzerPassword = Boolean(existing?.role === "BLITZER" && existing.passwordHash);
 
   if (!existing) {
     const user = await prisma.user.create({
@@ -104,8 +106,8 @@ export async function acceptApplication(formData: FormData) {
       data: {
         role: existing.role === "FOUNDER" ? "FOUNDER" : permission,
         isActive: true,
-        mustChangePassword: existing.role !== "FOUNDER",
-        passwordHash,
+        mustChangePassword: existing.role === "FOUNDER" || keepBlitzerPassword ? false : true,
+        passwordHash: keepBlitzerPassword ? existing.passwordHash : passwordHash,
         phone: existing.phone ?? app.phone,
       },
     });
@@ -131,7 +133,9 @@ export async function acceptApplication(formData: FormData) {
   const site = await appUrl();
   const setupUrl = `${site}/setup-account?token=${inviteToken}`;
   const loginUrl = `${site}/login?email=${encodeURIComponent(email)}`;
-  const mail = await sendAcceptance(email, app.firstName, roleName, tempPassword, { setupUrl, loginUrl });
+  const mail = keepBlitzerPassword
+    ? await sendBlitzerPromoted(email, app.firstName, roleName, loginUrl)
+    : await sendAcceptance(email, app.firstName, roleName, tempPassword, { setupUrl, loginUrl });
 
   await prisma.application.update({
     where: { id },
@@ -141,7 +145,7 @@ export async function acceptApplication(formData: FormData) {
       reviewedAt: new Date(),
       reviewedById: admin.id,
       acceptedUserId: userId,
-      issuedTempPassword: tempPassword,
+      issuedTempPassword: keepBlitzerPassword ? null : tempPassword,
       lastEmailStatus: mail.sent ? "sent" : mail.error || "failed",
     },
   });
@@ -281,6 +285,7 @@ export async function saveOrgSettings(formData: FormData) {
       founderVideoType: String(formData.get("founderVideoType") || "youtube"),
       defaultMeetingLink: String(formData.get("defaultMeetingLink") || ""),
       brandTagline: String(formData.get("brandTagline") || ""),
+      instagramUrl: cleanInstagramUrl(String(formData.get("instagramUrl") || "")) ?? existing.instagramUrl,
       smtpHost: String(formData.get("smtpHost") || ""),
       smtpPort: String(formData.get("smtpPort") || "587"),
       smtpUser: String(formData.get("smtpUser") || ""),

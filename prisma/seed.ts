@@ -1,5 +1,7 @@
 import { PrismaClient, PermissionRole, TeamKey, ChannelKey } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { SUBJECTS } from "../src/lib/subjects";
+import { stageFromStatus } from "../src/lib/stages";
 
 const prisma = new PrismaClient();
 
@@ -77,6 +79,30 @@ async function main() {
         slug: ch.key,
         kind: "TEAM" as const,
         teamId: ch.teamKey ? byKey[ch.teamKey].id : undefined,
+      },
+    });
+  }
+
+  for (const [index, subject] of SUBJECTS.entries()) {
+    await prisma.apSubject.upsert({
+      where: { slug: subject.slug },
+      update: {
+        name: subject.name,
+        color: subject.color,
+        ink: subject.ink,
+        shortName: subject.short,
+        icon: subject.icon,
+        sortOrder: index,
+        active: true,
+      },
+      create: {
+        slug: subject.slug,
+        name: subject.name,
+        color: subject.color,
+        ink: subject.ink,
+        shortName: subject.short,
+        icon: subject.icon,
+        sortOrder: index,
       },
     });
   }
@@ -171,6 +197,22 @@ async function main() {
       data: { createdById: null },
     });
     await prisma.user.deleteMany({ where: { id: { in: demoIds } } });
+  }
+
+  const org = await prisma.orgSettings.findUnique({ where: { id: "org" } });
+  if (org && !org.stagesBackfilled) {
+    const items = await prisma.contentItem.findMany({ select: { id: true, status: true, completedAt: true } });
+    for (const item of items) {
+      const stage = stageFromStatus(item.status);
+      await prisma.contentItem.update({
+        where: { id: item.id },
+        data: {
+          stage,
+          completedAt: stage === "COMPLETED" ? item.completedAt ?? new Date() : item.completedAt,
+        },
+      });
+    }
+    await prisma.orgSettings.update({ where: { id: "org" }, data: { stagesBackfilled: true } });
   }
 
   console.log("Seed complete.");

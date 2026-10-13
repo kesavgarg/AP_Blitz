@@ -1,5 +1,6 @@
 import "server-only";
 import { PrismaClient } from "@prisma/client";
+import { stageFromStatus } from "@/lib/stages";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -21,11 +22,34 @@ function databaseUrl() {
   }
 }
 
-export const prisma =
+function withStage(data: unknown) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return;
+  const row = data as { status?: unknown; stage?: unknown };
+  if (typeof row.status === "string" && row.stage == null) {
+    row.stage = stageFromStatus(row.status);
+  }
+}
+
+const base =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     datasourceUrl: databaseUrl(),
   });
 
-globalForPrisma.prisma = prisma;
+export const prisma = base.$extends({
+  query: {
+    contentItem: {
+      async create({ args, query }) {
+        withStage(args.data);
+        return query(args);
+      },
+      async update({ args, query }) {
+        withStage(args.data);
+        return query(args);
+      },
+    },
+  },
+});
+
+globalForPrisma.prisma = base;

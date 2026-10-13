@@ -53,6 +53,8 @@ export async function markNotificationsRead() {
   });
   revalidatePath("/workspace");
   revalidatePath("/workspace/notifications");
+  revalidatePath("/student/notifications");
+  revalidatePath("/student/dashboard");
 }
 
 export type ProfileState = { error?: string; success?: string } | undefined;

@@ -5,7 +5,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || user.role === "BLITZER") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = rateLimit(`upload:${user.id}`, 30, 60 * 60 * 1000);
   if (!limited.ok) return NextResponse.json({ error: "Upload limit reached." }, { status: 429 });
   const ipLimit = rateLimit(`upload-ip:${clientIp(req.headers)}`, 60, 60 * 60 * 1000);

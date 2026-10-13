@@ -52,7 +52,18 @@ export async function loginAction(
     await logActivity({ userId: user.id, action: `${user.firstName} ${user.lastName} logged in` });
 
     const next = String(formData.get("next") || "");
-    const dest = next.startsWith("/") && !next.startsWith("//") ? next : user.role === "FOUNDER" ? "/admin" : "/workspace";
+    const safe =
+      next.startsWith("/") &&
+      !next.startsWith("//") &&
+      !(user.role === "BLITZER" && (next.startsWith("/workspace") || next.startsWith("/admin"))) &&
+      !(user.role !== "BLITZER" && next.startsWith("/student"));
+    const dest = safe
+      ? next
+      : user.role === "BLITZER"
+        ? "/student/dashboard"
+        : user.role === "FOUNDER"
+          ? "/admin"
+          : "/workspace";
     redirect(dest);
   } catch (err) {
     if (

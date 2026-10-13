@@ -4,9 +4,11 @@ import { BrandMark } from "@/components/brand";
 export function PublicFooter({
   email,
   phone,
+  instagramUrl,
 }: {
   email: string;
   phone: string;
+  instagramUrl?: string;
 }) {
   return (
     <footer className="border-t border-white/10 bg-black/40 backdrop-blur-md">
@@ -21,15 +23,23 @@ export function PublicFooter({
         <div className="text-sm">
           <p className="mb-3 font-semibold">Join</p>
           <div className="flex flex-col gap-2 text-muted">
-            <Link href="/join" className="hover:text-volt">
-              Roles
+            <Link href="/videos" className="hover:text-volt">
+              Watch videos
+            </Link>
+            <Link href="/register" className="hover:text-volt">
+              Become a Blitzer
             </Link>
             <Link href="/apply" className="hover:text-volt">
-              Apply
+              Apply to the team
             </Link>
-            <Link href="/login" className="hover:text-volt">
-              Team login
+            <Link href="/about" className="hover:text-volt">
+              About
             </Link>
+            {instagramUrl ? (
+              <a href={instagramUrl} className="hover:text-volt" target="_blank" rel="noopener noreferrer">
+                Instagram
+              </a>
+            ) : null}
           </div>
         </div>
         <div className="text-sm">

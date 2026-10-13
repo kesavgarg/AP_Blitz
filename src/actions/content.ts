@@ -530,11 +530,16 @@ export async function advanceContent(formData: FormData) {
   const item = await prisma.contentItem.findUnique({ where: { id } });
   if (!item) return;
   const publishAt = String(formData.get("publishAt") || "");
+  const { stageFromStatus } = await import("@/lib/stages");
+  const stage = stageFromStatus(status);
   await prisma.contentItem.update({
     where: { id },
     data: {
       status,
+      stage,
       publishAt: publishAt ? new Date(publishAt) : item.publishAt,
+      completedAt: stage === "COMPLETED" ? new Date() : null,
+      completedById: stage === "COMPLETED" ? user.id : null,
     },
   });
   if (status === "PUBLISHED" && publishAt) {

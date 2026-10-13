@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { advanceContent } from "@/actions/content";
-import { CONTENT_STATUS_LABELS, PIPELINE_STEPS, pipelineIndex } from "@/lib/utils";
+import { moveContentStage } from "@/actions/pipeline";
+import { WORK_STAGES } from "@/lib/stages";
 
 export default async function AdminContentPage() {
   await requireAdmin();
@@ -15,7 +15,13 @@ export default async function AdminContentPage() {
     <div>
       <h1 className="font-display text-4xl">Content pipeline</h1>
       <p className="mt-2 text-paper/60">
-        Idea → script → record → edit → graphics → review → publish.
+        Active work uses four stages: To Do, In Progress, Needs Review, Completed.
+        Publishing a video is separate and happens on the Videos page.
+      </p>
+      <p className="mt-3 text-sm">
+        <Link href="/workspace/pipeline" className="text-volt">Open the board</Link>
+        {" · "}
+        <Link href="/workspace/completed" className="text-volt">Completed work</Link>
       </p>
       <div className="mt-6 space-y-3">
         {items.map((item) => (
@@ -25,35 +31,24 @@ export default async function AdminContentPage() {
                 <p className="text-xs text-volt">{item.contentId}</p>
                 <h2 className="font-display text-2xl">{item.title}</h2>
                 <p className="text-sm text-paper/50">
-                  {CONTENT_STATUS_LABELS[item.status]} · {item.owner?.firstName ?? "unassigned"}
+                  {WORK_STAGES.find((stage) => stage.key === item.stage)?.label} · {item.owner?.firstName ?? "unassigned"}
                 </p>
               </div>
               <Link href={`/workspace/content/${item.id}`} className="text-sm text-volt">
                 Open
               </Link>
             </div>
-            <div className="mt-3 flex gap-1 overflow-x-auto">
-              {PIPELINE_STEPS.map((s, i) => (
-                <span
-                  key={s.key}
-                  className={`rounded-full px-2 py-0.5 text-[10px] ${i <= pipelineIndex(item.status) ? "bg-volt text-ink" : "bg-white/10"}`}
-                >
-                  {s.label}
-                </span>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WORK_STAGES.map((stage) => (
+                <form key={stage.key} action={moveContentStage}>
+                  <input type="hidden" name="id" value={item.id} />
+                  <input type="hidden" name="stage" value={stage.key} />
+                  <button className={`rounded-full px-3 py-1 text-xs font-semibold ${item.stage === stage.key ? "bg-volt text-ink" : "bg-white/10"}`}>
+                    {stage.label}
+                  </button>
+                </form>
               ))}
             </div>
-            <form action={advanceContent} className="mt-4 flex flex-wrap gap-2">
-              <input type="hidden" name="id" value={item.id} />
-              <select name="status" defaultValue={item.status} className="rounded-xl bg-ink px-2 py-1 text-sm">
-                {Object.keys(CONTENT_STATUS_LABELS).map((s) => (
-                  <option key={s} value={s}>
-                    {CONTENT_STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-              <input name="publishAt" type="datetime-local" className="rounded-xl bg-ink px-2 py-1 text-sm" />
-              <button className="rounded-full bg-volt px-3 py-1 text-sm font-semibold text-ink">Update</button>
-            </form>
           </article>
         ))}
       </div>

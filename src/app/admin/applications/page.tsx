@@ -23,6 +23,9 @@ export default async function ApplicationsPage({
   return (
     <div>
       <h1 className="font-display text-4xl">Applications</h1>
+      <p className="mt-2 text-sm text-paper/60">
+        Team applications only. Blitzer study accounts are not in this queue and do not need approval.
+      </p>
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         <Link href="/admin/applications" className="rounded-full border border-white/15 px-3 py-1">
           All

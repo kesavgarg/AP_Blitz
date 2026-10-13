@@ -5,7 +5,7 @@ if (!process.env.AUTH_SECRET?.trim()) {
 }
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["bcryptjs", "@prisma/client"],
+  serverExternalPackages: ["bcryptjs", "@prisma/client", "web-push"],
   experimental: {
     serverActions: {
       bodySizeLimit: "200mb",
