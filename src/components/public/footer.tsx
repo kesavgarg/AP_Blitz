@@ -29,7 +29,7 @@ export function PublicFooter({
             <Link href="/register" className="hover:text-volt">
               Become a Blitzer
             </Link>
-            <Link href="/apply" className="hover:text-volt">
+            <Link href="/join" className="hover:text-volt">
               Apply to the team
             </Link>
             <Link href="/about" className="hover:text-volt">

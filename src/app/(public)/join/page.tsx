@@ -11,10 +11,13 @@ export default function JoinPage() {
         Pick a lane. Show up. Ship AP content.
       </h1>
       <p className="mt-4 max-w-2xl text-paper/70">
-        Every role has its own page with expectations, example assignments, and
-        an apply button. You&apos;ll choose a first and second choice on the form.
+        Read the roles below, then continue when you know which lane you want.
+        You&apos;ll choose a first and second choice on the form.
       </p>
-      <div className="mt-12 grid gap-5 md:grid-cols-2">
+      <Link href="/apply" className="mt-8 inline-flex rounded-full bg-volt px-6 py-3 font-semibold text-ink">
+        Continue to the application
+      </Link>
+      <div className="mt-10 grid gap-5 md:grid-cols-2">
         {ROLES.map((role) => (
           <Link
             key={role.slug}

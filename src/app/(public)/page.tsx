@@ -43,7 +43,7 @@ export default async function HomePage() {
               Watch Videos
             </Link>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Link href="/register" className="rounded-full border border-white/15 px-4 py-3 text-center text-sm font-semibold">
+              <Link href="/join" className="rounded-full border border-white/15 px-4 py-3 text-center text-sm font-semibold">
                 Apply to Join
               </Link>
               <Link href={user ? accountHref : "/login"} className="rounded-full border border-white/15 px-4 py-3 text-center text-sm font-semibold">

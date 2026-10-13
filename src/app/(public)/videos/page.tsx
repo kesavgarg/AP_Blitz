@@ -56,7 +56,7 @@ export default async function VideosPage({
   ]);
 
   return (
-    <BlitzerPrompt ask={!user}>
+    <BlitzerPrompt ask={user?.role !== "BLITZER"}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">Video library</p>
       <h1 className="mt-3 font-display text-5xl leading-none">Watch AP videos</h1>

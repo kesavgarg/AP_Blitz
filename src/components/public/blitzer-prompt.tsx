@@ -7,10 +7,8 @@ import { useEffect, useId, useRef, useState } from "react";
 const KEY = "apblitz-blitzer-prompt";
 
 function isLibraryDestination(raw: string) {
-  const [path, query] = raw.split("?");
-  if (path.startsWith("/videos/watch/")) return true;
-  if (query) return false;
-  return /^\/videos\/[^/]+$/.test(path);
+  const path = raw.split("?")[0];
+  return path === "/videos" || path.startsWith("/videos/");
 }
 
 export function BlitzerPrompt({
@@ -30,12 +28,7 @@ export function BlitzerPrompt({
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     panelRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("keydown", onKey);
       previous?.focus();
     };
   }, [open]);

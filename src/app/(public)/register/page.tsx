@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RegisterForm } from "@/components/auth/register-form";
+import { ROLES } from "@/lib/roles";
 
 export const metadata = { title: "Join" };
 
@@ -20,7 +21,7 @@ export default async function RegisterPage({
           <h2 className="mt-2 font-display text-3xl">Become a Blitzer</h2>
           <p className="mt-2 text-sm text-paper/70">Watch videos, pick your AP classes, save favorites, send requests and feedback. No approval.</p>
         </Link>
-        <Link href="/register?tab=apply" className={`rounded-3xl border p-5 ${!blitzer ? "border-volt bg-volt/10" : "border-white/10"}`}>
+        <Link href="/join" className="rounded-3xl border border-white/10 p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-volt">Option 2</p>
           <h2 className="mt-2 font-display text-3xl">Apply to Join AP Blitz</h2>
           <p className="mt-2 text-sm text-paper/70">Work on the team. Kesav reviews this. It does not turn a Blitzer account into a member by itself.</p>
@@ -44,6 +45,15 @@ export default async function RegisterPage({
             <Link href="/apply" className="mt-6 inline-flex rounded-full bg-volt px-5 py-3 font-semibold text-ink">
               Continue to the application
             </Link>
+            <div className="mt-8 grid gap-4">
+              {ROLES.map((role) => (
+                <article key={role.slug} className="rounded-3xl border border-white/10 p-5">
+                  <h3 className="font-display text-2xl">{role.emoji} {role.name}</h3>
+                  <p className="mt-2 text-sm text-paper/70">{role.description}</p>
+                  <p className="mt-2 text-sm text-muted">{role.tagline}</p>
+                </article>
+              ))}
+            </div>
           </>
         )}
       </div>

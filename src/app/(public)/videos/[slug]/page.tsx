@@ -52,14 +52,8 @@ export default async function SubjectVideosPage({
         .filter((value): value is string => Boolean(value)),
     ),
   ];
-  const grouped = new Map<string, typeof videos>();
-  for (const video of videos) {
-    const key = video.unit || "General";
-    grouped.set(key, [...(grouped.get(key) || []), video]);
-  }
-
   return (
-    <BlitzerPrompt ask={!user}>
+    <BlitzerPrompt ask={user?.role !== "BLITZER"}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <Link href="/videos" className="text-sm text-paper/60">
         All videos
@@ -91,16 +85,11 @@ export default async function SubjectVideosPage({
       {videos.length === 0 ? (
         <p className="mt-8 text-sm text-muted">Nothing published in this subject yet.</p>
       ) : (
-        [...grouped.entries()].map(([name, rows]) => (
-          <section key={name} className="mt-10">
-            <h2 className="font-display text-3xl">{name}</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map((video) => (
-                <VideoCard key={video.id} video={video} />
-              ))}
-            </div>
-          </section>
-        ))
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {videos.map((video) => (
+            <VideoCard key={video.id} video={video} />
+          ))}
+        </div>
       )}
     </div>
     </BlitzerPrompt>

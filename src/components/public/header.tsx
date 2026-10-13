@@ -23,7 +23,7 @@ export function PublicHeader({
           <Link href="/videos" className="rounded-full bg-volt px-4 py-2 text-sm font-semibold text-ink">
             Watch Videos
           </Link>
-          <Link href="/register" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">
+          <Link href="/join" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">
             Apply
           </Link>
           <Link href={signedIn ? accountHref : "/login"} className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">
