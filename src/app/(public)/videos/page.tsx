@@ -4,6 +4,7 @@ import { listSubjects } from "@/lib/catalog";
 import { prisma } from "@/lib/prisma";
 import { SubjectCard } from "@/components/public/subject-card";
 import { VideoCard } from "@/components/public/video-card";
+import { BlitzerPrompt } from "@/components/public/blitzer-prompt";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Watch videos" };
@@ -16,6 +17,7 @@ export default async function VideosPage({
   const { q, subject } = await searchParams;
   const query = (q || "").trim();
   const [subjects, user] = await Promise.all([listSubjects(), getSessionUser()]);
+  const offered = subjects.filter((item) => item.videoCount > 0);
   const publishedWhere = {
     status: "PUBLISHED" as const,
     ...(subject ? { subject: { slug: subject } } : {}),
@@ -54,11 +56,12 @@ export default async function VideosPage({
   ]);
 
   return (
+    <BlitzerPrompt ask={!user}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">Video library</p>
       <h1 className="mt-3 font-display text-5xl leading-none">Watch AP videos</h1>
       <p className="mt-3 max-w-2xl text-paper/70">
-        Every published video lands in the subject it was saved with. {subjects.length} AP subjects are set up.
+        Every published video lands in the subject it was saved with.
       </p>
       {!user ? (
         <p className="mt-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm">
@@ -82,7 +85,7 @@ export default async function VideosPage({
         <Link href="/videos" className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${!subject ? "bg-volt text-ink" : "border border-white/15"}`}>
           All subjects
         </Link>
-        {subjects.map((item) => (
+        {offered.map((item) => (
           <Link
             key={item.id}
             href={`/videos?subject=${item.slug}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
@@ -98,8 +101,29 @@ export default async function VideosPage({
         ))}
       </div>
 
+      <section className="mt-10">
+        <h2 className="font-display text-3xl">Browse subjects</h2>
+        {offered.length ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {offered.map((item) => (
+              <SubjectCard
+                key={item.id}
+                href={`/videos/${item.slug}`}
+                name={item.name}
+                color={item.color}
+                ink={item.ink}
+                icon={item.icon}
+                count={item.videoCount}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-muted">No published videos match that yet.</p>
+        )}
+      </section>
+
       {continueWatching.length ? (
-        <section className="mt-10">
+        <section className="mt-12">
           <h2 className="font-display text-3xl">Continue watching</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {continueWatching.map((row) => (
@@ -109,21 +133,19 @@ export default async function VideosPage({
         </section>
       ) : null}
 
-      <section className="mt-10">
-        <h2 className="font-display text-3xl">Recently added</h2>
-        {recent.length ? (
+      {recent.length ? (
+        <section className="mt-12">
+          <h2 className="font-display text-3xl">Recently added</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {recent.map((video) => (
               <VideoCard key={video.id} video={video} />
             ))}
           </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted">No published videos match that yet.</p>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       {popularRaw.length ? (
-        <section className="mt-10">
+        <section className="mt-12">
           <h2 className="font-display text-3xl">Popular</h2>
           <p className="mt-1 text-sm text-muted">Ordered by actual views on AP Blitz.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -133,23 +155,7 @@ export default async function VideosPage({
           </div>
         </section>
       ) : null}
-
-      <section className="mt-12">
-        <h2 className="font-display text-3xl">Browse all subjects</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {subjects.map((item) => (
-            <SubjectCard
-              key={item.id}
-              href={`/videos/${item.slug}`}
-              name={item.name}
-              color={item.color}
-              ink={item.ink}
-              icon={item.icon}
-              count={item.videoCount}
-            />
-          ))}
-        </div>
-      </section>
     </div>
+    </BlitzerPrompt>
   );
 }

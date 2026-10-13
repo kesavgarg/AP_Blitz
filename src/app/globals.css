@@ -90,6 +90,14 @@ label:active,
   transform: scale(0.97);
   filter: brightness(1.28);
 }
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  [type="submit"]:not(:disabled):hover,
+  [type="button"]:not(:disabled):hover,
+  a.rounded-full:hover {
+    filter: brightness(1.14);
+  }
+}
 button:disabled,
 .btn-press:disabled {
   opacity: 0.55;

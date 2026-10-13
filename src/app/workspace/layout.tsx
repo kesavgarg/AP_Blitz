@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { isAdmin, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
 import { canAccessChannel } from "@/lib/rbac";
@@ -32,14 +32,18 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       : Promise.resolve(0),
   ]);
 
-  const items: NavItem[] = [
+  const items: NavItem[] = [];
+  if (isAdmin(user)) {
+    items.push({ href: "/admin", label: "Admin", icon: "🛠️" });
+  }
+  items.push(
     { href: "/workspace", label: "Overview", icon: "🏠" },
     { href: "/workspace/messages", label: "Messages", icon: "💬", badge: unreadMessages || undefined },
     { href: "/workspace/tasks", label: "My Tasks", icon: "✅" },
     { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
     { href: "/workspace/pipeline", label: "Content Pipeline", icon: "🎬" },
     { href: "/workspace/videos", label: "Videos", icon: "▶️" },
-  ];
+  );
   if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
     items.push({ href: "/admin/applications", label: "Applications", icon: "📥" });
   }

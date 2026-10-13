@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { youtubeThumb } from "@/lib/videos";
-import { formatDate } from "@/lib/utils";
+import { formatDate, instagramEmbedFromUrl } from "@/lib/utils";
 
 export function VideoCard({
   video,
@@ -18,23 +18,32 @@ export function VideoCard({
   };
 }) {
   const thumb = video.thumbnailUrl || youtubeThumb(video.url);
+  const preview = !thumb && video.platform === "instagram" ? instagramEmbedFromUrl(video.url) : null;
   return (
     <Link
       href={`/videos/watch/${video.id}`}
       className="group overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/50 transition hover:-translate-y-0.5 hover:border-white/25"
     >
-      <div className="relative aspect-video" style={{ backgroundColor: video.subject.color }}>
+      <div className="relative aspect-video overflow-hidden" style={{ backgroundColor: video.subject.color }}>
         {thumb ? (
           // External platform thumbnails. Next/Image would need a remote allowlist per host.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={thumb} alt="" className="h-full w-full object-cover" />
+        ) : preview ? (
+          <iframe
+            src={preview}
+            title={video.title}
+            tabIndex={-1}
+            loading="lazy"
+            className="pointer-events-none absolute inset-x-0 top-[-4.5rem] h-[28rem] w-full"
+          />
         ) : (
           <div className="grid h-full place-items-center px-4 text-center text-sm font-semibold" style={{ color: video.subject.ink }}>
-            {video.platform === "instagram" ? "Open on Instagram" : video.subject.name}
+            {video.subject.name}
           </div>
         )}
         <span
-          className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold"
+          className="absolute left-3 top-3 z-10 rounded-full px-2.5 py-1 text-[11px] font-bold"
           style={{ backgroundColor: video.subject.color, color: video.subject.ink }}
         >
           {video.subject.name}

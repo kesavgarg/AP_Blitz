@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 import { bootCatalog } from "@/lib/catalog";
 import { VideoCard } from "@/components/public/video-card";
+import { BlitzerPrompt } from "@/components/public/blitzer-prompt";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function SubjectVideosPage({
   searchParams: Promise<{ q?: string; unit?: string }>;
 }) {
   await bootCatalog();
+  const user = await getSessionUser();
   const { slug } = await params;
   const { q, unit } = await searchParams;
   const subject = await prisma.apSubject.findFirst({ where: { slug, active: true } });
@@ -56,6 +59,7 @@ export default async function SubjectVideosPage({
   }
 
   return (
+    <BlitzerPrompt ask={!user}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <Link href="/videos" className="text-sm text-paper/60">
         All videos
@@ -99,5 +103,6 @@ export default async function SubjectVideosPage({
         ))
       )}
     </div>
+    </BlitzerPrompt>
   );
 }

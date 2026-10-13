@@ -154,6 +154,7 @@ export async function saveLibraryVideo(formData: FormData) {
 
   revalidateVideo(videoId);
   revalidatePath(`/videos/${subject.slug}`);
+  if (publish) redirect("/workspace/videos?published=1");
   redirect(`/workspace/videos/${videoId}?saved=1`);
 }
 
