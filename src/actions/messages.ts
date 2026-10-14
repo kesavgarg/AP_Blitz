@@ -9,6 +9,7 @@ import { canAccessChannel, canModerateChannel } from "@/lib/rbac";
 import { notify, notifyMany, logActivity } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 import { slugifySubject } from "@/lib/ap-subjects";
+import { isOneTimeMember } from "@/lib/one-time";
 
 async function loadChannel(id: string) {
   return prisma.messageChannel.findUnique({
@@ -80,6 +81,16 @@ export async function sendMessage(formData: FormData) {
   if (!channel || !canAccessChannel(user, channel)) {
     return;
   }
+  if (await isOneTimeMember(user.id, user.role)) {
+    const founder = await prisma.user.findFirst({
+      where: { role: "FOUNDER", isActive: true },
+      select: { id: true },
+    });
+    const memberIds = channel.members.map((member) => member.userId);
+    if (channel.kind !== "DM" || !founder || !memberIds.includes(founder.id) || !memberIds.includes(user.id)) {
+      return;
+    }
+  }
   if (!body && !(file instanceof File && file.size > 0)) {
     return;
   }
@@ -146,6 +157,7 @@ export async function openDirectMessage(formData: FormData) {
   if (!otherId || otherId === user.id) return;
   const other = await prisma.user.findUnique({ where: { id: otherId } });
   if (!other || !other.isActive) return;
+  if (await isOneTimeMember(user.id, user.role) && other.role !== "FOUNDER") return;
 
   const ids = [user.id, other.id].sort();
   const slug = `dm:${ids.join(":")}`;

@@ -157,6 +157,7 @@ export async function sendAcceptance(
   role: string,
   tempPassword: string,
   urls: { setupUrl: string; loginUrl: string },
+  note = "",
 ) {
   return send(
     to,
@@ -165,7 +166,8 @@ export async function sendAcceptance(
       "Congratulations — you're accepted",
       `<p>Hey ${escapeHtml(name)},</p>
        <p>You got in. Welcome to AP Blitz as a <strong>${escapeHtml(role)}</strong>.</p>
-       <p>Tap the button below to open AP Blitz and choose your password. If Gmail preview does not load the site, copy the link under the button into Safari or Chrome.</p>
+       ${note}
+       <p>Tap the button below to open AP Blitz and choose your password. Then log in. If Gmail preview does not load the site, copy the link under the button into Safari or Chrome.</p>
        ${ctaButton(urls.setupUrl, "Open AP Blitz")}
        <p>Or sign in at <a href="${escapeHtml(urls.loginUrl)}" target="_blank" rel="noopener noreferrer" style="color:#ff914d;">${escapeHtml(urls.loginUrl)}</a> with:</p>
        <p><strong>Email:</strong> ${escapeHtml(to)}<br/>

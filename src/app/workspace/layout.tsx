@@ -1,10 +1,13 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAdmin, requireUser } from "@/lib/auth";
+import { isOneTimeMember, oneTimePathAllowed } from "@/lib/one-time";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
 import { canAccessChannel } from "@/lib/rbac";
 import { AlertWatcher } from "@/components/workspace/alert-watcher";
 import { ThemeToggle } from "@/components/workspace/theme-toggle";
+import { OneTimeGate } from "@/components/workspace/one-time-gate";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -13,6 +16,11 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (user.role === "BLITZER") redirect("/student/dashboard");
+  const oneTime = await isOneTimeMember(user.id, user.role);
+  const pathname = (await headers()).get("x-pathname") || "";
+  if (oneTime && pathname.startsWith("/workspace") && !oneTimePathAllowed(pathname)) {
+    redirect("/workspace/trends");
+  }
   const channels = await prisma.messageChannel.findMany({
     include: { members: { select: { userId: true } } },
   });
@@ -34,6 +42,13 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   ]);
 
   const items: NavItem[] = [];
+  if (oneTime) {
+    items.push(
+      { href: "/workspace/trends", label: "Video ideas", icon: "📈" },
+      { href: "/workspace/kesav", label: "Message Kesav", icon: "💬" },
+      { href: "/workspace/commitment", label: "Commitment", icon: "✅" },
+    );
+  } else {
   if (isAdmin(user)) {
     items.push({ href: "/admin", label: "Admin", icon: "🛠️" });
   }
@@ -60,8 +75,11 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (user.role === "FOUNDER") {
     items.push({ href: "/admin/settings", label: "Settings", icon: "⚙️" });
   }
+  }
 
-  const roleLabel =
+  const roleLabel = oneTime
+    ? "One video"
+    :
     user.role === "FOUNDER"
       ? "Founder"
       : user.role === "TEAM_ADMIN"
@@ -84,12 +102,16 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           </p>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <ThemeToggle />
+            {oneTime ? null : (
             <Link href="/workspace/notifications" className="rounded-full bg-ink px-3 py-1 text-paper">
               {unread + unreadMessages ? `${unread + unreadMessages} new` : "Caught up"}
             </Link>
+            )}
           </div>
         </header>
-        <div className="flex-1 px-4 py-6 md:px-8">{children}</div>
+        <div className="flex-1 px-4 py-6 md:px-8">
+          <OneTimeGate active={Boolean(oneTime)}>{children}</OneTimeGate>
+        </div>
       </div>
     </div>
   );

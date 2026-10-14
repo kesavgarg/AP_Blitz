@@ -138,9 +138,12 @@ export async function acceptApplication(formData: FormData) {
   const site = await appUrl();
   const setupUrl = `${site}/setup-account?token=${inviteToken}`;
   const loginUrl = `${site}/login?email=${encodeURIComponent(email)}`;
+  const oneTimeNote = app.commitment === "ONE_TIME"
+    ? "<p>Log in after you choose a password. You will see video ideas, a page to message Kesav, and a way to apply again as a full-time member.</p>"
+    : "";
   const mail = keepBlitzerPassword
     ? await sendBlitzerPromoted(email, app.firstName, roleName, loginUrl)
-    : await sendAcceptance(email, app.firstName, roleName, tempPassword, { setupUrl, loginUrl });
+    : await sendAcceptance(email, app.firstName, roleName, tempPassword, { setupUrl, loginUrl }, oneTimeNote);
 
   await prisma.application.update({
     where: { id },
@@ -158,8 +161,10 @@ export async function acceptApplication(formData: FormData) {
   await notify({
     userId: userId!,
     title: "Welcome to AP Blitz",
-    body: `You're accepted as a ${roleName}. Log in to open the workspace.`,
-    href: "/workspace",
+    body: app.commitment === "ONE_TIME"
+      ? "You're accepted. Log in and pick one video idea."
+      : `You're accepted as a ${roleName}. Log in to open the workspace.`,
+    href: app.commitment === "ONE_TIME" ? "/workspace/trends" : "/workspace",
   });
   await logActivity({
     userId: admin.id,

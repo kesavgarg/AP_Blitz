@@ -642,6 +642,7 @@ model TrendLink {
   id          String   @id @default(cuid())
   url         String
   note        String   @default("")
+  description String   @default("")
   createdById String
   createdBy   User     @relation("TrendAuthor", fields: [createdById], references: [id])
   claimedById String?

@@ -33,7 +33,9 @@ export async function proxy(request: NextRequest) {
 
   try {
     await jwtVerify(token, key);
-    return NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   } catch {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);

@@ -15,6 +15,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
 import { safeNextPath } from "@/lib/safe-path";
 import { sendNewDeviceAlert } from "@/lib/email";
+import { isOneTimeMember, oneTimePathAllowed } from "@/lib/one-time";
 
 export type ActionState = { error?: string; success?: string } | undefined;
 
@@ -98,9 +99,19 @@ export async function loginAction(
       metadata: { ip, userAgent },
     });
 
-    const dest =
+    const oneTime = await isOneTimeMember(user.id, user.role);
+    let dest =
       safeNextPath(String(formData.get("next") || ""), user.role) ??
-      (user.role === "BLITZER" ? "/student/dashboard" : user.role === "FOUNDER" ? "/admin" : "/workspace");
+      (user.role === "BLITZER"
+        ? "/student/dashboard"
+        : user.role === "FOUNDER"
+          ? "/admin"
+          : oneTime
+            ? "/workspace/trends"
+            : "/workspace");
+    if (oneTime && dest.startsWith("/workspace") && !oneTimePathAllowed(dest)) {
+      dest = "/workspace/trends";
+    }
     redirect(dest);
   } catch (err) {
     if (
@@ -160,5 +171,5 @@ export async function setupAccountAction(
     userId: invite.userId,
     action: `${invite.user.firstName} ${invite.user.lastName} set up their account`,
   });
-  redirect("/workspace");
+  redirect((await isOneTimeMember(invite.userId, invite.user.role)) ? "/workspace/trends" : "/workspace");
 }
