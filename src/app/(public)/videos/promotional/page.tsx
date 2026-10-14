@@ -21,7 +21,7 @@ export default async function PromotionalVideosPage() {
         <Link href="/videos" className="text-sm text-paper/60">All videos</Link>
         <div className="mt-4 overflow-hidden rounded-[1.8rem] bg-black">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-promotional.png" alt="AP Blitz Promotional" className="max-h-72 w-full object-cover" />
+          <img src="/logo-promotional.png" alt="AP Blitz Promotional" className="aspect-[4/3] max-h-80 w-full object-cover" />
         </div>
         <h1 className="mt-6 font-display text-5xl">Promotional</h1>
         <p className="mt-2 text-paper/70">{videos.length} {videos.length === 1 ? "video" : "videos"}</p>

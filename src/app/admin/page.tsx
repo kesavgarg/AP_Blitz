@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminHome() {
   const user = await requireAdmin();
   const now = new Date();
-  const [members, pendingApps, recentApps, activeTasks, overdue, meetings, inProd] =
+  const [members, pendingApps, recentApps, activeTasks, overdue, meetings] =
     await Promise.all([
       prisma.user.count({ where: { isActive: true, role: { not: "FOUNDER" } } }),
       prisma.application.count({ where: { status: { in: ["NEW", "UNDER_REVIEW"] } } }),
@@ -20,7 +20,6 @@ export default async function AdminHome() {
       prisma.task.count({ where: { status: { not: "COMPLETED" } } }),
       prisma.task.count({ where: { deadline: { lt: now }, status: { not: "COMPLETED" } } }),
       prisma.meeting.count({ where: { startAt: { gte: now } } }),
-      prisma.contentItem.count({ where: { status: { not: "PUBLISHED" } } }),
     ]);
 
   return (
@@ -36,7 +35,6 @@ export default async function AdminHome() {
         <Card n={members} l="Accepted team members" href="/admin/team" />
         <Card n={activeTasks} l="Open tasks" href="/workspace/tasks" />
         <Card n={overdue} l="Overdue tasks" href="/workspace/tasks" />
-        <Card n={inProd} l="Content in production" href="/admin/content" />
         <Card n={meetings} l="Upcoming meetings" href="/workspace/meetings" />
       </div>
 

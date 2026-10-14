@@ -10,23 +10,16 @@ const LINKS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/applications", label: "Applications" },
   { href: "/admin/team", label: "Team" },
-  { href: "/admin/messages", label: "Messages" },
-  { href: "/admin/calendar", label: "Calendar" },
-  { href: "/admin/content", label: "Content" },
   { href: "/workspace/videos", label: "Videos" },
   { href: "/admin/requests", label: "Requests" },
   { href: "/admin/feedback", label: "Feedback" },
   { href: "/workspace/announcements", label: "Announcements" },
-  { href: "/admin/emails", label: "Emails" },
-  { href: "/admin/activity", label: "Activity" },
-  { href: "/admin/sessions", label: "Sessions" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/workspace", label: "Workspace" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
-  const links = LINKS.filter((link) => link.href !== "/admin/sessions" || admin.role === "FOUNDER");
+  await requireAdmin();
   const settings = await getOrgSettings();
   const emailReady = Boolean(settings.smtpHost && settings.smtpUser && settings.smtpPass);
   return (
@@ -38,7 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="shrink-0 font-display text-sm text-volt">
             Admin
           </Link>
-          {links.map((l) => (
+          {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="whitespace-nowrap text-sm text-paper/70 hover:text-volt">
               {l.label}
             </Link>

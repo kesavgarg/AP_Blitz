@@ -37,9 +37,9 @@ export type SubjectDef = {
  * filter, and dashboard chip.
  */
 export const SUBJECTS: SubjectDef[] = [
-  { slug: "ap-human-geography", name: "AP Human Geography", color: "#F0A202", ink: "#1A1203", short: "HuG", icon: "geo" },
-  { slug: "ap-world-history", name: "AP World History: Modern", color: "#6272A8", ink: "#F7F4EE", short: "World", icon: "world" },
-  { slug: "ap-psychology", name: "AP Psychology", color: "#E07A6F", ink: "#1A1203", short: "Psych", icon: "psych" },
+  { slug: "ap-human-geography", name: "AP Human Geography", color: "#fbaf26", ink: "#1A1203", short: "HuG", icon: "geo" },
+  { slug: "ap-world-history", name: "AP World History: Modern", color: "#566fa8", ink: "#F7F4EE", short: "World", icon: "world" },
+  { slug: "ap-psychology", name: "AP Psychology", color: "#e7786c", ink: "#1A1203", short: "Psych", icon: "psych" },
   { slug: "ap-us-history", name: "AP US History", color: "#B94A3E", ink: "#FFF6F2", short: "APUSH", icon: "book" },
   { slug: "ap-european-history", name: "AP European History", color: "#7A5B3A", ink: "#FFF6EA", short: "Euro", icon: "book" },
   { slug: "ap-government", name: "AP Government", color: "#2F6F6A", ink: "#F3FFFD", short: "Gov", icon: "capitol" },

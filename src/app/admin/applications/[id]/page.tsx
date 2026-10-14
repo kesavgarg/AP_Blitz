@@ -60,6 +60,10 @@ export default async function ApplicationDetail({
           <p>Understands they can be removed: {app.expectRemoval}</p>
           <p>Weekly deadline: {app.expectDeadlines}</p>
         </div>
+        <Section t="AP classes" b={app.apClasses} />
+        {app.experience ? <Section t="Experience" b={app.experience} /> : null}
+        <Section t="If they miss a deadline" b={app.deadlineScenario} />
+        {app.additionalInfo ? <Section t="Anything else" b={app.additionalInfo} /> : null}
       </article>
       <div className="space-y-4">
         {app.status === "ACCEPTED" && app.issuedTempPassword ? (

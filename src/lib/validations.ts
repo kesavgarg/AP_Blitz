@@ -18,11 +18,15 @@ export const applicationSchema = z.object({
   cityCounty: z.string().trim().min(1, "City/County is required").max(160),
   email: z.string().trim().email("Enter a valid email").max(160),
   phone: z.string().trim().min(7, "Enter a valid phone number").max(40),
+  apClasses: z.string().trim().min(2, "List your AP classes").max(4000),
   lane: z.enum(["one-video", "video-taker", "graphic-posts"]),
   videoLane: z.enum(["EDUCATIONAL", "PROMOTIONAL"]).optional().or(z.literal("")),
+  experience: z.string().trim().max(4000).optional().or(z.literal("")),
   keepSiteOpen: yesNo,
   canBeRemoved: yesNo,
   weeklyDeadline: yesNo,
+  deadlineScenario: z.string().trim().min(12, "Tell us what you would do in this situation").max(4000),
+  additionalInfo: z.string().trim().max(4000).optional().or(z.literal("")),
 });
 
 export const loginSchema = z.object({

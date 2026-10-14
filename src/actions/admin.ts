@@ -295,13 +295,50 @@ export async function clearMemberTeams(formData: FormData) {
   revalidatePath("/workspace/team");
 }
 
-export async function deactivateUser(formData: FormData) {
+export async function kickMember(formData: FormData) {
   const founder = await requireFounder();
   const userId = String(formData.get("userId") || "");
-  if (userId === founder.id) return;
-  await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
-  await prisma.session.deleteMany({ where: { userId } });
+  if (!userId || userId === founder.id) return;
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, firstName: true, lastName: true, email: true },
+  });
+  if (!target || target.role === "FOUNDER") return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.application.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } });
+    await tx.application.updateMany({ where: { acceptedUserId: userId }, data: { acceptedUserId: null } });
+    await tx.messagePin.deleteMany({ where: { userId } });
+    await tx.message.deleteMany({ where: { authorId: userId } });
+    await tx.socialIdea.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
+    await tx.script.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
+    await tx.fileAsset.updateMany({ where: { uploadedById: userId }, data: { uploadedById: founder.id } });
+    await tx.task.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });
+    await tx.task.updateMany({ where: { creatorId: userId }, data: { creatorId: founder.id } });
+    await tx.meeting.updateMany({ where: { hostId: userId }, data: { hostId: founder.id } });
+    await tx.trendLink.updateMany({ where: { createdById: userId }, data: { createdById: founder.id } });
+    await tx.trendLink.updateMany({ where: { claimedById: userId }, data: { claimedById: null } });
+    await tx.announcement.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
+    await tx.contentItem.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
+    await tx.contentItem.updateMany({ where: { completedById: userId }, data: { completedById: null } });
+    await tx.seoRequest.updateMany({ where: { specialistId: userId }, data: { specialistId: null } });
+    await tx.calendarEvent.updateMany({ where: { createdById: userId }, data: { createdById: null } });
+    await tx.libraryVideo.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
+    await tx.libraryVideo.updateMany({ where: { publishedById: userId }, data: { publishedById: null } });
+    await tx.videoEvent.updateMany({ where: { userId }, data: { userId: null } });
+    await tx.activityLog.updateMany({ where: { userId }, data: { userId: null } });
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  await logActivity({
+    userId: founder.id,
+    action: `${founder.firstName} kicked ${target.firstName} ${target.lastName} off AP Blitz`,
+    objectType: "User",
+    objectId: userId,
+  });
   revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
 }
 
 export async function saveOrgSettings(formData: FormData) {

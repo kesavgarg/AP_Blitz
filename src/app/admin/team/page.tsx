@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireFounder } from "@/lib/auth";
-import { deactivateUser, setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam, clearMemberTeams } from "@/actions/admin";
+import { setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam, clearMemberTeams } from "@/actions/admin";
 import { isActiveTeamKey, ROLES } from "@/lib/roles";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { KickButton } from "@/components/admin/kick-button";
+import type { PermissionRole, TeamKey } from "@prisma/client";
 
 export default async function AdminTeamPage() {
   await requireFounder();
@@ -18,26 +20,54 @@ export default async function AdminTeamPage() {
     await prisma.team.delete({ where: { id: seoTeam.id } }).catch(() => undefined);
   }
   const users = await prisma.user.findMany({
+    where: { isActive: true },
     include: { memberships: { include: { team: true } } },
     orderBy: { firstName: "asc" },
   });
   const teams = await prisma.team.findMany({ orderBy: { name: "asc" } });
+  const members = users.filter((u) => u.role !== "BLITZER");
+  const blitzers = users.filter((u) => u.role === "BLITZER");
 
   return (
     <div>
       <h1 className="font-display text-4xl">Team</h1>
       <p className="mt-2 text-sm text-paper/60">
-        Real accepted members only. Demo accounts are gone — people show up here after you accept
-        their application.
+        Club members are the people who make videos and posts. Blitzers are the student accounts.
+        Kicking someone deletes the account. They have to sign up again, and login says no account found.
       </p>
-      <div className="mt-6 space-y-3">
-        {users.map((u) => (
+      <Section title="Club members" people={members} />
+      <Section title="Blitzers" people={blitzers} />
+      <p className="mt-6 text-xs text-paper/40">{teams.length} teams in the org.</p>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  people,
+}: {
+  title: string;
+  people: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: PermissionRole;
+    memberships: Array<{ id: string; teamId: string; isLeader: boolean; team: { key: TeamKey; name: string } }>;
+  }>;
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="font-display text-2xl">{title}</h2>
+      <p className="mt-1 text-sm text-paper/50">{people.length} {people.length === 1 ? "person" : "people"}</p>
+      <div className="mt-4 space-y-3">
+        {people.length === 0 ? <p className="text-sm text-paper/40">Nobody here yet.</p> : null}
+        {people.map((u) => (
           <article key={u.id} className="rounded-3xl border border-white/10 bg-navy p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-display text-xl">
-                  {u.firstName} {u.lastName}{" "}
-                  {!u.isActive ? <span className="text-xs text-coral">inactive</span> : null}
+                  {u.firstName} {u.lastName}
                 </p>
                 <p className="text-sm text-paper/50">{u.email}</p>
                 <p className="mt-1 text-xs text-paper/40">
@@ -64,10 +94,7 @@ export default async function AdminTeamPage() {
                       <input type="hidden" name="userId" value={u.id} />
                       <SubmitButton className="text-coral">Remove all teams and roles</SubmitButton>
                     </form>
-                    <form action={deactivateUser}>
-                      <input type="hidden" name="userId" value={u.id} />
-                      <button className="text-coral">Deactivate</button>
-                    </form>
+                    <KickButton userId={u.id} name={`${u.firstName} ${u.lastName}`} />
                   </>
                 ) : null}
               </div>
@@ -113,7 +140,6 @@ export default async function AdminTeamPage() {
           </article>
         ))}
       </div>
-      <p className="mt-6 text-xs text-paper/40">{teams.length} teams in the org.</p>
-    </div>
+    </section>
   );
 }

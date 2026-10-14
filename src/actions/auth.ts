@@ -45,11 +45,21 @@ export async function loginAction(
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    const passwordOk = Boolean(user?.passwordHash) && (await verifyPassword(parsed.data.password, user?.passwordHash || ""));
-    if (!user || !user.passwordHash || !user.isActive || !passwordOk) {
+    if (!user || !user.isActive) {
       await prisma.activityLog.create({
         data: {
           userId: user?.id,
+          action: `Failed login for ${email} from ${ip}`,
+          metadata: { email, ip, userAgent },
+        },
+      });
+      return { error: "No account found." };
+    }
+    const passwordOk = Boolean(user.passwordHash) && (await verifyPassword(parsed.data.password, user.passwordHash || ""));
+    if (!user.passwordHash || !passwordOk) {
+      await prisma.activityLog.create({
+        data: {
+          userId: user.id,
           action: `Failed login for ${email} from ${ip}`,
           metadata: { email, ip, userAgent },
         },

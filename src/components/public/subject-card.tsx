@@ -24,12 +24,12 @@ export function SubjectCard({
     return (
       <Link
         href={href}
-        className="group relative block min-h-60 overflow-hidden rounded-[1.75rem] shadow-[0_24px_50px_-28px_rgba(0,0,0,0.85)] transition duration-200 hover:-translate-y-1"
+        className="group relative block aspect-[4/3] overflow-hidden rounded-[1.75rem] shadow-[0_24px_50px_-28px_rgba(0,0,0,0.85)] transition duration-200 hover:-translate-y-1"
         style={{ backgroundColor: color }}
       >
-        {/* Real subject mark, same crop on every card of this class. */}
+        {/* Full-bleed mark. The file's own background runs to the rounded edge. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logo} alt={name} className="h-72 w-full object-contain" />
+        <img src={logo} alt={name} className="absolute inset-0 h-full w-full object-cover" />
         <p className="absolute left-4 top-4 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
           {count} {count === 1 ? "video" : "videos"}
         </p>

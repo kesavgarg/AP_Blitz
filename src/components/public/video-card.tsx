@@ -29,11 +29,11 @@ export function VideoCard({
       href={`/videos/watch/${video.id}`}
       className="group overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/50 transition hover:-translate-y-0.5 hover:border-white/25"
     >
-      <div className="relative aspect-video overflow-hidden" style={{ backgroundColor: video.promotional ? "#111" : video.subject.color }}>
+      <div className="relative aspect-video overflow-hidden" style={{ backgroundColor: video.promotional ? "#111111" : video.subject.color }}>
         {logo ? (
-          // Same mark on every video in a subject so the grid lines up.
+          // Same full-bleed mark on every video in a subject.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="h-full w-full object-contain" />
+          <img src={logo} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="grid h-full place-items-center" style={{ color: video.subject.ink }}>
             <SubjectArt icon={video.subject.icon || "book"} />

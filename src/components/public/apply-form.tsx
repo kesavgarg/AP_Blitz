@@ -40,12 +40,26 @@ export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
           <Field label="City / County *" name="cityCounty" error={state?.fieldErrors?.cityCounty} />
           <Field label="Personal email *" name="email" type="email" error={state?.fieldErrors?.email} />
           <Field label="Phone number *" name="phone" type="tel" error={state?.fieldErrors?.phone} />
+          <p className="-mt-2 text-xs text-muted md:col-span-2">
+            Use an inbox you actually check. Accept and decline emails go here.
+          </p>
           <label className="block text-sm md:col-span-2">
             Photo of yourself *
             <p className="mt-1 text-xs text-muted">Required. Kesav sees this with your application.</p>
             <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required className={`${inputClass} file:mr-3 file:rounded-full file:border-0 file:bg-volt file:px-3 file:py-1 file:text-sm file:font-semibold file:text-ink`} />
           </label>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">Academic</p>
+        <h2 className="mt-2 font-display text-2xl">What APs are you in?</h2>
+        <label className="mt-6 block text-sm">
+          What are your major AP classes at school? *
+          <p className="mt-1 text-xs text-muted">We recommend listing all of your AP classes.</p>
+          <textarea name="apClasses" required rows={5} className={inputClass} />
+          {state?.fieldErrors?.apClasses ? <p className="mt-1 text-xs text-coral">{state.fieldErrors.apClasses[0]}</p> : null}
+        </label>
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
@@ -91,6 +105,15 @@ export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-coral">Experience</p>
+        <h2 className="mt-2 font-display text-2xl">Have you done this before?</h2>
+        <p className="mt-2 text-sm text-muted">
+          Prior experience helps, but it is not required. If you&apos;re new, tell us why you want to learn it here.
+        </p>
+        <textarea name="experience" rows={5} className={`${inputClass} mt-4`} />
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">Before you apply</p>
         <h2 className="mt-2 font-display text-2xl">Read this.</h2>
         <div className="mt-6 space-y-5">
@@ -107,6 +130,22 @@ export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
             question="You will be given a deadline to make a video, and you need to make at least one thing every week. Do you understand?"
           />
         </div>
+        <label className="mt-8 block text-sm">
+          Imagine that you realize you will not be able to meet a deadline for an assignment. What should you do? *
+          <p className="mt-1 text-xs text-muted">
+            Hint: disappearing is the wrong answer. Talk to a team lead or admin as soon as you know.
+          </p>
+          <textarea name="deadlineScenario" required rows={5} className={inputClass} />
+          {state?.fieldErrors?.deadlineScenario ? (
+            <p className="mt-1 text-xs text-coral">{state.fieldErrors.deadlineScenario[0]}</p>
+          ) : null}
+        </label>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-black/45 p-6 backdrop-blur-md">
+        <h2 className="font-display text-2xl">Anything else?</h2>
+        <textarea name="additionalInfo" rows={4} className={`${inputClass} mt-4`} />
+        <p className="mt-4 text-sm text-muted">Questions? Email kesavgarg@gmail.com or text +1 (404) 213-9019.</p>
       </section>
 
       <button
