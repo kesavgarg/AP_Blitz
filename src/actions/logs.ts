@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { createSession, hashPassword, requireTeam, requireUser, verifyPassword } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 
 export async function submitDailyLog(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const whatDid = String(formData.get("whatDid") || "").trim();
   if (!whatDid) return;
   const hoursRaw = String(formData.get("hours") || "");
@@ -63,7 +63,7 @@ export async function updateProfile(
   _prev: ProfileState,
   formData: FormData,
 ): Promise<ProfileState> {
-  const user = await requireUser();
+  const user = await requireTeam();
   const file = formData.get("image");
   let imageUrl: string | undefined;
   try {
@@ -99,7 +99,7 @@ export async function changePasswordAction(
   _prev: PasswordState,
   formData: FormData,
 ): Promise<PasswordState> {
-  const user = await requireUser();
+  const user = await requireTeam();
   const current = String(formData.get("currentPassword") || "");
   const next = String(formData.get("newPassword") || "");
   const confirm = String(formData.get("confirmPassword") || "");
@@ -113,10 +113,14 @@ export async function changePasswordAction(
   const ok = await verifyPassword(current, full.passwordHash);
   if (!ok) return { error: "Current password is wrong." };
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash: await hashPassword(next), mustChangePassword: false },
-  });
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(next), mustChangePassword: false },
+    }),
+    prisma.session.deleteMany({ where: { userId: user.id } }),
+  ]);
+  await createSession(user.id);
   await prisma.application.updateMany({
     where: { acceptedUserId: user.id },
     data: { issuedTempPassword: null },

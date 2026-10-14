@@ -6,9 +6,13 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user || user.role === "BLITZER") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const limited = rateLimit(`upload:${user.id}`, 30, 60 * 60 * 1000);
+  const declared = Number(req.headers.get("content-length") || 0);
+  if (declared > 32 * 1024 * 1024) {
+    return NextResponse.json({ error: "That file is too large." }, { status: 413 });
+  }
+  const limited = await rateLimit(`upload:${user.id}`, 30, 60 * 60 * 1000);
   if (!limited.ok) return NextResponse.json({ error: "Upload limit reached." }, { status: 429 });
-  const ipLimit = rateLimit(`upload-ip:${clientIp(req.headers)}`, 60, 60 * 60 * 1000);
+  const ipLimit = await rateLimit(`upload-ip:${clientIp(req.headers)}`, 60, 60 * 60 * 1000);
   if (!ipLimit.ok) return NextResponse.json({ error: "Upload limit reached." }, { status: 429 });
 
   const form = await req.formData();

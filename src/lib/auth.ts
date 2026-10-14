@@ -38,11 +38,26 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
+export async function revokeUserSessions(userId: string) {
+  await prisma.session.deleteMany({ where: { userId } });
+}
+
 export async function createSession(userId: string) {
   const token = crypto.randomUUID() + crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  let ip: string | null = null;
+  let userAgent: string | null = null;
+  try {
+    const { headers } = await import("next/headers");
+    const { clientIp } = await import("@/lib/rate-limit");
+    const h = await headers();
+    ip = clientIp(h);
+    userAgent = (h.get("user-agent") || "").slice(0, 400) || null;
+  } catch {
+    // Session still works when headers are unavailable.
+  }
   await prisma.session.create({
-    data: { userId, token, expiresAt },
+    data: { userId, token, expiresAt, ip, userAgent },
   });
   const jwt = await new SignJWT({ sid: token })
     .setProtectedHeader({ alg: "HS256" })
@@ -117,6 +132,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 export async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  return user;
+}
+
+/** Signed-in team account. Blitzer accounts stay on the student side. */
+export async function requireTeam() {
+  const user = await requireUser();
+  if (user.role === "BLITZER") redirect("/student/dashboard");
   return user;
 }
 

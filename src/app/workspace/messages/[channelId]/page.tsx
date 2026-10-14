@@ -38,7 +38,7 @@ export default async function ChannelPage({
       orderBy: { firstName: "asc" },
     }),
   ]);
-  await markChannelRead(channelId, user.id);
+  await markChannelRead(channelId);
   const visible = sortChannels(channels.filter((c) => canAccessChannel(user, c)));
   const unreadRows = await prisma.message.groupBy({
     by: ["channelId"],

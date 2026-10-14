@@ -132,7 +132,7 @@ export async function sendApplicationReceived(to: string, name: string, applicat
       "Application received",
       `<p>Hey ${escapeHtml(name)},</p>
        <p>Thanks for applying to AP Blitz. We received your application <strong>${escapeHtml(applicationId)}</strong>. Kesav will review it and email you at this address when there's a decision.</p>
-       <p>If you have questions, email kesavgarg@gmail.com or text +1 (404) 212-9019.</p>
+       <p>If you have questions, email kesavgarg@gmail.com or text +1 (404) 213-9019.</p>
        <p>— AP Blitz</p>`,
     ),
   );
@@ -292,6 +292,22 @@ export async function sendTestEmail(to: string) {
     wrap(
       "Email is working",
       `<p>If you can read this, AP Blitz can send application emails.</p>`,
+    ),
+  );
+}
+
+export async function sendNewDeviceAlert(
+  to: string,
+  details: { account: string; role: string; ip: string; userAgent: string },
+) {
+  return send(
+    to,
+    "Admin sign-in from a new device",
+    wrap(
+      "New device sign-in",
+      `<p>${escapeHtml(details.account)} (${escapeHtml(details.role)}) just signed in from a device we have not seen on that account.</p>
+       <p>IP: ${escapeHtml(details.ip)}<br>Browser: ${escapeHtml(details.userAgent)}</p>
+       <p>If this was you, no action is needed. If it was not, reset that password and end the session in Admin → Sessions.</p>`,
     ),
   );
 }

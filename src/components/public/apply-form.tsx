@@ -131,7 +131,7 @@ export function ApplyForm({ defaultRole }: { defaultRole?: RoleSlug }) {
         <h2 className="font-display text-2xl">Anything else?</h2>
         <textarea name="additionalInfo" rows={4} className={`${inputClass} mt-4`} />
         <p className="mt-4 text-sm text-muted">
-          Questions? Email kesavgarg@gmail.com or text +1 (404) 212-9019.
+          Questions? Email kesavgarg@gmail.com or text +1 (404) 213-9019.
         </p>
       </section>
 

@@ -31,11 +31,22 @@ export async function GET(
     : await prisma.user.findFirst({ where: { imageUrl: `/api/files/${id}` }, select: { id: true } });
   if (!allowed && !avatarOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const filename = file.filename.replace(/[\r\n"]/g, "").slice(0, 180) || "file";
+  const inline = file.mimeType.startsWith("image/");
   const headers = {
     "Content-Type": file.mimeType,
-    "Content-Disposition": `inline; filename="${file.filename.replace(/"/g, "")}"`,
+    "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,
+    "X-Content-Type-Options": "nosniff",
     "Cache-Control": "private, max-age=86400",
   };
+
+  if (file.path.startsWith("https://")) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    if (!token) return NextResponse.json({ error: "Missing file" }, { status: 404 });
+    const upstream = await fetch(file.path, { headers: { Authorization: `Bearer ${token}` } });
+    if (!upstream.ok || !upstream.body) return NextResponse.json({ error: "Missing file" }, { status: 404 });
+    return new NextResponse(upstream.body, { headers });
+  }
 
   if (file.bytes && file.bytes.length > 0) {
     return new NextResponse(new Uint8Array(file.bytes), { headers });

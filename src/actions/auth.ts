@@ -13,6 +13,8 @@ import {
 import { loginSchema, setupAccountSchema } from "@/lib/validations";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/activity";
+import { safeNextPath } from "@/lib/safe-path";
+import { sendNewDeviceAlert } from "@/lib/email";
 
 export type ActionState = { error?: string; success?: string } | undefined;
 
@@ -20,50 +22,75 @@ export async function loginAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const ip = clientIp((await headers()) as Headers);
-  const limited = rateLimit(`login:${ip}`, 8, 10 * 60 * 1000);
-  if (!limited.ok) return { error: "Too many login attempts. Wait a few minutes." };
-
+  const headerList = await headers();
+  const ip = clientIp(headerList);
+  const userAgent = (headerList.get("user-agent") || "").slice(0, 400);
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
   if (!parsed.success) return { error: "Enter a valid email and password." };
 
-  if (!authSecret()) {
-    console.error("[login] AUTH_SECRET is not set");
+  const email = parsed.data.email.toLowerCase();
+  const [byIp, byAccount] = await Promise.all([
+    rateLimit(`login:ip:${ip}`, 20, 10 * 60 * 1000),
+    rateLimit(`login:acct:${email}`, 8, 10 * 60 * 1000),
+  ]);
+  if (!byIp.ok || !byAccount.ok) return { error: "Too many login attempts. Wait a few minutes." };
+
+  if (!authSecret() || authSecret().length < 32) {
+    console.error("[login] AUTH_SECRET is missing or too short");
     return { error: "Sign-in is temporarily unavailable. Please try again shortly." };
   }
 
-  const email = parsed.data.email.toLowerCase();
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.passwordHash || !user.isActive) {
+    const passwordOk = Boolean(user?.passwordHash) && (await verifyPassword(parsed.data.password, user?.passwordHash || ""));
+    if (!user || !user.passwordHash || !user.isActive || !passwordOk) {
+      await prisma.activityLog.create({
+        data: {
+          userId: user?.id,
+          action: `Failed login for ${email} from ${ip}`,
+          metadata: { email, ip, userAgent },
+        },
+      });
       return { error: "Those credentials don't match an active AP Blitz account." };
     }
-    const ok = await verifyPassword(parsed.data.password, user.passwordHash);
-    if (!ok) return { error: "Those credentials don't match an active AP Blitz account." };
+
+    if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
+      const known = userAgent
+        ? await prisma.session.count({ where: { userId: user.id, userAgent } })
+        : 0;
+      if (!known) {
+        const founder = await prisma.user.findFirst({
+          where: { role: "FOUNDER", isActive: true },
+          select: { email: true },
+        });
+        if (founder) {
+          await sendNewDeviceAlert(founder.email, {
+            account: user.email,
+            role: user.role,
+            ip,
+            userAgent: userAgent || "unknown",
+          });
+        }
+      }
+    }
 
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
     await createSession(user.id);
-    await logActivity({ userId: user.id, action: `${user.firstName} ${user.lastName} logged in` });
+    await logActivity({
+      userId: user.id,
+      action: `${user.firstName} ${user.lastName} logged in`,
+      metadata: { ip, userAgent },
+    });
 
-    const next = String(formData.get("next") || "");
-    const safe =
-      next.startsWith("/") &&
-      !next.startsWith("//") &&
-      !(user.role === "BLITZER" && (next.startsWith("/workspace") || next.startsWith("/admin"))) &&
-      !(user.role !== "BLITZER" && next.startsWith("/student"));
-    const dest = safe
-      ? next
-      : user.role === "BLITZER"
-        ? "/student/dashboard"
-        : user.role === "FOUNDER"
-          ? "/admin"
-          : "/workspace";
+    const dest =
+      safeNextPath(String(formData.get("next") || ""), user.role) ??
+      (user.role === "BLITZER" ? "/student/dashboard" : user.role === "FOUNDER" ? "/admin" : "/workspace");
     redirect(dest);
   } catch (err) {
     if (
@@ -107,6 +134,7 @@ export async function setupAccountAction(
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
+  await prisma.session.deleteMany({ where: { userId: invite.userId } });
   await prisma.$transaction([
     prisma.user.update({
       where: { id: invite.userId },

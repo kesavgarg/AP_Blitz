@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { TaskStatus, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFounder, onTeam, requireUser } from "@/lib/auth";
+import { isFounder, onTeam, requireTeam } from "@/lib/auth";
 import { logActivity, notify } from "@/lib/activity";
 import { sendAssignment } from "@/lib/email";
 
 export async function createTask(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "MEMBER") return;
   const title = String(formData.get("title") || "").trim();
   if (!title) return;
@@ -53,7 +53,7 @@ export async function createTask(formData: FormData) {
 }
 
 export async function updateTaskStatus(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "") as TaskStatus;
   const task = await prisma.task.findUnique({ where: { id } });

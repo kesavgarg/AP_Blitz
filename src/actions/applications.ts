@@ -19,9 +19,13 @@ export async function submitApplication(
   _prev: ApplyState,
   formData: FormData,
 ): Promise<ApplyState> {
-  const ip = clientIp((await headers()) as Headers);
-  const limited = rateLimit(`apply:${ip}`, 20, 30 * 60 * 1000);
-  if (!limited.ok) return { error: "Too many applications from this network. Try later." };
+  const ip = clientIp(await headers());
+  const emailKey = String(formData.get("email") || "").trim().toLowerCase();
+  const [byIp, byAccount] = await Promise.all([
+    rateLimit(`apply:ip:${ip}`, 20, 30 * 60 * 1000),
+    rateLimit(`apply:acct:${emailKey || ip}`, 5, 30 * 60 * 1000),
+  ]);
+  if (!byIp.ok || !byAccount.ok) return { error: "Too many applications from this network. Try later." };
 
   const parsed = applicationSchema.safeParse({
     firstName: formData.get("firstName"),

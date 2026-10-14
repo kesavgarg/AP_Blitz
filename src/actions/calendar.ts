@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CalendarEventType, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFounder, requireUser } from "@/lib/auth";
+import { isFounder, requireTeam } from "@/lib/auth";
+import { safeNextPath } from "@/lib/safe-path";
 import { notifyMany } from "@/lib/activity";
 
 function parseDate(value: string) {
@@ -14,7 +15,7 @@ function parseDate(value: string) {
 }
 
 export async function createEvent(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "MEMBER") return;
   const title = String(formData.get("title") || "").trim();
   const startAt = parseDate(String(formData.get("startAt") || ""));
@@ -60,12 +61,12 @@ export async function createEvent(formData: FormData) {
   revalidatePath("/workspace/calendar");
   revalidatePath("/admin/calendar");
   revalidatePath("/workspace");
-  const next = String(formData.get("next") || "/workspace/calendar");
-  redirect(next.startsWith("/") ? `${next.split("?")[0]}?created=1` : "/workspace/calendar?created=1");
+  const next = safeNextPath(String(formData.get("next") || ""), user.role) ?? "/workspace/calendar";
+  redirect(`${next.split("?")[0]}?created=1`);
 }
 
 export async function deleteEvent(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "MEMBER" && !isFounder(user)) return;
   const id = String(formData.get("id") || "");
   const event = await prisma.calendarEvent.findUnique({ where: { id } });

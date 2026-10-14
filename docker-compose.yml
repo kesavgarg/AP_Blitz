@@ -1,3 +1,5 @@
+# Local development database only. Bound to loopback so it is not reachable
+# from other machines. Do not run this file on a public host.
 services:
   db:
     image: postgres:16-alpine
@@ -7,7 +9,7 @@ services:
       POSTGRES_PASSWORD: apblitz
       POSTGRES_DB: apblitz
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - apblitz_pg:/var/lib/postgresql/data
     healthcheck:

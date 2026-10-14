@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { isAdmin, requireUser } from "@/lib/auth";
+import { isAdmin, requireTeam } from "@/lib/auth";
 import { logActivity, nextContentId } from "@/lib/activity";
 import { isWorkStage } from "@/lib/stages";
 
@@ -14,7 +14,7 @@ function refresh() {
 }
 
 export async function createPipelineItem(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "BLITZER") return;
   const title = String(formData.get("title") || "").trim();
   if (!title) return;
@@ -49,7 +49,7 @@ export async function createPipelineItem(formData: FormData) {
 }
 
 export async function moveContentStage(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "BLITZER") return;
   const id = String(formData.get("id") || "");
   const stage = String(formData.get("stage") || "");

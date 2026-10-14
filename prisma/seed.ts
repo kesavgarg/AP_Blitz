@@ -121,7 +121,15 @@ async function main() {
 
   const founderEmail = (process.env.FOUNDER_EMAIL ?? "kesavgarg@gmail.com").toLowerCase();
   const founderName = (process.env.FOUNDER_NAME ?? "Kesav Garg").split(" ");
-  const founderPassword = process.env.FOUNDER_PASSWORD ?? "change-me";
+  const founderPassword = process.env.FOUNDER_PASSWORD?.trim() ?? "";
+  if (
+    founderPassword.length < 12 ||
+    founderPassword.toLowerCase() === "change-me" ||
+    !/[A-Za-z]/.test(founderPassword) ||
+    !/[0-9]/.test(founderPassword)
+  ) {
+    throw new Error("Set FOUNDER_PASSWORD to a unique password of at least 12 characters. The seed default change-me is refused.");
+  }
   const passwordHash = await bcrypt.hash(founderPassword, 12);
 
   const founder = await prisma.user.upsert({
@@ -129,9 +137,9 @@ async function main() {
     update: {
       role: PermissionRole.FOUNDER,
       isActive: true,
-      passwordHash,
       firstName: founderName[0] ?? "Kesav",
       lastName: founderName.slice(1).join(" ") || "Garg",
+      ...(process.env.SEED_RESET_FOUNDER_PASSWORD === "1" ? { passwordHash } : {}),
     },
     create: {
       email: founderEmail,
@@ -139,7 +147,7 @@ async function main() {
       lastName: founderName.slice(1).join(" ") || "Garg",
       passwordHash,
       role: PermissionRole.FOUNDER,
-      phone: "+1 (404) 212-9019",
+      phone: "+1 (404) 213-9019",
     },
   });
 

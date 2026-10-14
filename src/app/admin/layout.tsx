@@ -19,12 +19,14 @@ const LINKS = [
   { href: "/workspace/announcements", label: "Announcements" },
   { href: "/admin/emails", label: "Emails" },
   { href: "/admin/activity", label: "Activity" },
+  { href: "/admin/sessions", label: "Sessions" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/workspace", label: "Workspace" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const links = LINKS.filter((link) => link.href !== "/admin/sessions" || admin.role === "FOUNDER");
   const settings = await getOrgSettings();
   const emailReady = Boolean(settings.smtpHost && settings.smtpUser && settings.smtpPass);
   return (
@@ -36,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="shrink-0 font-display text-sm text-volt">
             Admin
           </Link>
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <Link key={l.href} href={l.href} className="whitespace-nowrap text-sm text-paper/70 hover:text-volt">
               {l.label}
             </Link>

@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFounder, requireUser } from "@/lib/auth";
+import { isFounder, requireTeam } from "@/lib/auth";
 import { notify, notifyMany, logActivity } from "@/lib/activity";
 import { sendMeetingInvite } from "@/lib/email";
 import { formatDateTime } from "@/lib/utils";
 
 export async function createMeeting(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (user.role === "MEMBER") return;
   const title = String(formData.get("title") || "").trim();
   const meetingLink = String(formData.get("meetingLink") || "").trim();
@@ -82,7 +82,7 @@ export async function createMeeting(formData: FormData) {
 }
 
 export async function createAnnouncement(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!isFounder(user) && user.role !== "TEAM_ADMIN") return;
   const title = String(formData.get("title") || "").trim();
   const body = String(formData.get("body") || "").trim();

@@ -18,7 +18,7 @@ export default async function ConfirmationPage({
         goes to the personal address you entered — and the accept/decline email will too.
       </p>
       <p className="mt-6 text-sm text-muted">
-        Questions? Email kesavgarg@gmail.com or text +1 (404) 212-9019.
+        Questions? Email kesavgarg@gmail.com or text +1 (404) 213-9019.
       </p>
       <Link href="/" className="mt-10 inline-flex rounded-full bg-volt px-6 py-3 font-semibold text-ink">
         Back home

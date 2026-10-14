@@ -31,8 +31,8 @@ export async function registerBlitzerAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const ip = clientIp((await headers()) as Headers);
-  const limited = rateLimit(`register:${ip}`, 8, 30 * 60 * 1000);
+  const ip = clientIp(await headers());
+  const limited = await rateLimit(`register:${ip}`, 8, 30 * 60 * 1000);
   if (!limited.ok) return { error: "Too many signups from this network. Try again later." };
 
   const parsed = registerSchema.safeParse({
@@ -93,8 +93,14 @@ export async function requestPasswordResetAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const ip = clientIp((await headers()) as Headers);
-  const limited = rateLimit(`reset:${ip}`, 6, 30 * 60 * 1000);
+  const headerList = await headers();
+  const ip = clientIp(headerList);
+  const emailForLimit = String(formData.get("email") || "").trim().toLowerCase();
+  const [byIp, byAccount] = await Promise.all([
+    rateLimit(`reset:ip:${ip}`, 6, 30 * 60 * 1000),
+    rateLimit(`reset:acct:${emailForLimit || ip}`, 4, 30 * 60 * 1000),
+  ]);
+  const limited = { ok: byIp.ok && byAccount.ok };
   if (!limited.ok) return { error: "Too many reset requests. Wait a bit and try again." };
 
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -159,6 +165,7 @@ export async function resetPasswordAction(
       data: { passwordHash, mustChangePassword: false },
     }),
     prisma.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+    prisma.session.deleteMany({ where: { userId: reset.userId } }),
   ]);
   await createSession(reset.userId);
   const dest = reset.user.role === "BLITZER" ? "/student/dashboard" : reset.user.role === "FOUNDER" ? "/admin" : "/workspace";

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApplicationStatus, PermissionRole, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireFounder, hashPassword } from "@/lib/auth";
+import { requireAdmin, requireFounder, hashPassword, revokeUserSessions } from "@/lib/auth";
 import { logActivity, notify } from "@/lib/activity";
 import { appUrl, sendAcceptance, sendBlitzerPromoted, sendRejection, sendTestEmail } from "@/lib/email";
 import { getRoleByKey, isActiveTeamKey } from "@/lib/roles";
@@ -111,6 +111,9 @@ export async function acceptApplication(formData: FormData) {
         phone: existing.phone ?? app.phone,
       },
     });
+    if (existing.role !== "FOUNDER" && existing.role !== permission) {
+      await revokeUserSessions(existing.id);
+    }
   }
 
   for (const team of teams) {
@@ -174,9 +177,12 @@ export async function updateMemberRole(formData: FormData) {
   const founder = await requireFounder();
   const userId = String(formData.get("userId") || "");
   const role = String(formData.get("role") || "") as PermissionRole;
-  if (!["FOUNDER", "TEAM_ADMIN", "MEMBER"].includes(role)) return;
-  if (userId === founder.id && role !== "FOUNDER") return;
+  if (userId === founder.id) return;
+  if (role === "FOUNDER" || !["TEAM_ADMIN", "MEMBER", "BLITZER"].includes(role)) return;
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!target || target.role === "FOUNDER" || target.role === role) return;
   await prisma.user.update({ where: { id: userId }, data: { role } });
+  await revokeUserSessions(userId);
   await logActivity({
     userId: founder.id,
     action: `${founder.firstName} changed a member's permission to ${role}`,
@@ -184,6 +190,7 @@ export async function updateMemberRole(formData: FormData) {
     objectId: userId,
   });
   revalidatePath("/admin/team");
+  revalidatePath("/admin/sessions");
 }
 
 export async function addMemberToTeam(formData: FormData) {
@@ -295,6 +302,22 @@ export async function saveOrgSettings(formData: FormData) {
   });
   revalidatePath("/");
   revalidatePath("/admin/settings");
+}
+
+export async function revokeSessionAction(formData: FormData) {
+  const founder = await requireFounder();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  const session = await prisma.session.findUnique({ where: { id }, select: { userId: true } });
+  if (!session) return;
+  await prisma.session.delete({ where: { id } });
+  await logActivity({
+    userId: founder.id,
+    action: `${founder.firstName} ended an active session`,
+    objectType: "User",
+    objectId: session.userId,
+  });
+  revalidatePath("/admin/sessions");
 }
 
 export async function testEmailSettings(formData: FormData) {

@@ -208,6 +208,8 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
   expiresAt DateTime
+  ip        String?
+  userAgent String?
   createdAt DateTime @default(now())
 }
 
@@ -291,7 +293,7 @@ model OrgSettings {
   founderTitle       String @default("Founder")
   founderBio         String @default("Student founder building AP Blitz so studying for APs actually feels doable — and a little less lonely.")
   contactEmail       String @default("kesavgarg@gmail.com")
-  contactPhone       String @default("+1 (404) 212-9019")
+  contactPhone       String @default("+1 (404) 213-9019")
   founderVideoUrl    String @default("")
   founderVideoType   String @default("youtube")
   defaultMeetingLink String @default("")

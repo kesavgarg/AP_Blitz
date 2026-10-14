@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ContentStatus, DesignRequestType, ScriptStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFounder, leadsTeam, onTeam, requireUser } from "@/lib/auth";
+import { isFounder, leadsTeam, onTeam, requireTeam } from "@/lib/auth";
 import { logActivity, nextContentId, notify } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 import { sendAssignment } from "@/lib/email";
@@ -35,7 +35,7 @@ async function history(contentId: string, userId: string, action: string, from?:
 }
 
 export async function submitSocialIdea(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!onTeam(user, "SOCIAL_MEDIA") && !isFounder(user)) {
     return;
   }
@@ -77,7 +77,7 @@ export async function submitSocialIdea(formData: FormData) {
 }
 
 export async function approveIdea(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!isFounder(user) && user.role !== "TEAM_ADMIN") return;
   const id = String(formData.get("id") || "");
   const writerId = String(formData.get("writerId") || "") || null;
@@ -123,7 +123,7 @@ export async function approveIdea(formData: FormData) {
 }
 
 export async function saveScript(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const title = String(formData.get("title") || "").trim();
   const body = String(formData.get("body") || "");
@@ -224,7 +224,7 @@ export async function saveScript(formData: FormData) {
 }
 
 export async function deleteScript(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   try {
     const script = await prisma.script.findUnique({
@@ -259,7 +259,7 @@ export async function deleteScript(formData: FormData) {
 }
 
 export async function reviewScript(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) return;
   const id = String(formData.get("id") || "");
   const decision = String(formData.get("decision") || "");
@@ -324,7 +324,7 @@ export async function reviewScript(formData: FormData) {
 }
 
 export async function acceptVideoAssignment(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const video = await prisma.video.findUnique({
     where: { id },
@@ -343,7 +343,7 @@ export async function acceptVideoAssignment(formData: FormData) {
 }
 
 export async function submitRawVideo(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const notes = String(formData.get("notes") || "") || null;
   const file = formData.get("file");
@@ -380,7 +380,7 @@ export async function submitRawVideo(formData: FormData) {
 }
 
 export async function claimEdit(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!onTeam(user, "VIDEO_EDITOR") && !isFounder(user)) return;
   const id = String(formData.get("id") || "");
   const video = await prisma.video.findUnique({
@@ -401,7 +401,7 @@ export async function claimEdit(formData: FormData) {
 }
 
 export async function submitEdit(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const notes = String(formData.get("notes") || "") || null;
   const file = formData.get("file");
@@ -431,7 +431,7 @@ export async function submitEdit(formData: FormData) {
 }
 
 export async function reviewEdit(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!isFounder(user) && !leadsTeam(user, "VIDEO_EDITOR")) return;
   const id = String(formData.get("id") || "");
   const decision = String(formData.get("decision") || "");
@@ -468,7 +468,7 @@ export async function reviewEdit(formData: FormData) {
 }
 
 export async function createDesignRequest(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (
     user.role === "MEMBER" &&
     !onTeam(user, "GRAPHIC_DESIGN") &&
@@ -498,7 +498,7 @@ export async function createDesignRequest(formData: FormData) {
 }
 
 export async function submitDesign(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   const id = String(formData.get("id") || "");
   const req = await prisma.designRequest.findUnique({ where: { id } });
   if (!req) return;
@@ -523,7 +523,7 @@ export async function submitDesign(formData: FormData) {
 }
 
 export async function advanceContent(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireTeam();
   if (!isFounder(user) && user.role !== "TEAM_ADMIN") return;
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "") as ContentStatus;

@@ -67,8 +67,8 @@ export async function submitVideoRequestAction(
 ): Promise<ActionState> {
   const user = await requireBlitzer();
   if (!user) return { error: "Log in with a Blitzer account to request a video." };
-  const ip = clientIp((await headers()) as Headers);
-  const limited = rateLimit(`request:${user.id}:${ip}`, 10, 60 * 60 * 1000);
+  const ip = clientIp(await headers());
+  const limited = await rateLimit(`request:${user.id}:${ip}`, 10, 60 * 60 * 1000);
   if (!limited.ok) return { error: "Too many requests. Try again later." };
 
   const parsed = requestSchema.safeParse({
@@ -121,7 +121,7 @@ export async function submitFeedbackAction(
 ): Promise<ActionState> {
   const user = await requireBlitzer();
   if (!user) return { error: "Log in with a Blitzer account to send feedback." };
-  const limited = rateLimit(`feedback:${user.id}`, 8, 60 * 60 * 1000);
+  const limited = await rateLimit(`feedback:${user.id}`, 8, 60 * 60 * 1000);
   if (!limited.ok) return { error: "Too much feedback at once. Try again later." };
   const parsed = feedbackSchema.safeParse({
     kind: formData.get("kind"),
