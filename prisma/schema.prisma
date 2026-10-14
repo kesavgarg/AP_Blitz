@@ -201,6 +201,8 @@ model User {
   ownedLibraryVideos LibraryVideo[]           @relation("LibraryOwner")
   publishedVideos    LibraryVideo[]           @relation("LibraryPublisher")
   videoEvents        VideoEvent[]
+  createdTrends      TrendLink[]              @relation("TrendAuthor")
+  claimedTrends      TrendLink[]              @relation("TrendClaim")
 }
 
 model Session {
@@ -273,6 +275,9 @@ model Application {
   expectDeadlines  YesNo
   deadlineScenario String
   additionalInfo   String?
+  photoUrl         String  @default("")
+  commitment       String  @default("")
+  videoLane        String  @default("")
   status           ApplicationStatus @default(NEW)
   adminNotes       String?
   rejectReason     String?
@@ -633,6 +638,17 @@ model Notification {
   @@unique([userId, dedupeKey])
 }
 
+model TrendLink {
+  id          String   @id @default(cuid())
+  url         String
+  note        String   @default("")
+  createdById String
+  createdBy   User     @relation("TrendAuthor", fields: [createdById], references: [id])
+  claimedById String?
+  claimedBy   User?    @relation("TrendClaim", fields: [claimedById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
 model ActivityLog {
   id         String   @id @default(cuid())
   userId     String?
@@ -697,6 +713,7 @@ model LibraryVideo {
   thumbnailUrl    String?
   durationSeconds Int?
   platform        String
+  promotional     Boolean       @default(false)
   status          LibraryStatus @default(DRAFT)
   tags            String?
   viewCount       Int           @default(0)

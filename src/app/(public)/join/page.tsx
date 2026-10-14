@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ROLES } from "@/lib/roles";
+import { APPLY_LANES } from "@/lib/roles";
 
 export const metadata = { title: "Join the team" };
 
@@ -11,28 +11,19 @@ export default function JoinPage() {
         Pick a lane. Show up. Ship AP content.
       </h1>
       <p className="mt-4 max-w-2xl text-paper/70">
-        Read the roles below, then continue when you know which lane you want.
-        You&apos;ll choose a first and second choice on the form.
+        Three ways to start. One video is a single video. Video taker is every week. Graphic posts is the design work.
       </p>
-      <Link href="/apply" className="mt-8 inline-flex rounded-full bg-volt px-6 py-3 font-semibold text-ink">
-        Continue to the application
-      </Link>
-      <div className="mt-10 grid gap-5 md:grid-cols-2">
-        {ROLES.map((role) => (
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
+        {APPLY_LANES.map((lane) => (
           <Link
-            key={role.slug}
-            href={`/join/${role.slug}`}
+            key={lane.id}
+            href={`/apply?lane=${lane.id}`}
             className="rounded-[1.75rem] border border-white/10 bg-black/45 p-7 backdrop-blur-md transition hover:border-volt/40"
           >
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-3xl">{role.emoji}</span>
-              <span className="rounded-full px-3 py-1 text-xs" style={{ background: `${role.accent}22`, color: role.accent }}>
-                {role.weekly.split(",")[0]}
-              </span>
-            </div>
-            <h2 className="mt-4 font-display text-3xl">{role.name}</h2>
-            <p className="mt-2 text-muted">{role.description}</p>
-            <p className="mt-6 font-semibold text-volt">Open role page →</p>
+            <span className="rounded-full bg-volt/15 px-3 py-1 text-xs text-volt">{lane.weekly}</span>
+            <h2 className="mt-4 font-display text-3xl">{lane.name}</h2>
+            <p className="mt-2 text-muted">{lane.description}</p>
+            <p className="mt-6 font-semibold text-volt">Apply for this →</p>
           </Link>
         ))}
       </div>

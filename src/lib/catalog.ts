@@ -72,7 +72,7 @@ export async function listSubjects() {
     where: { active: true },
     orderBy: { sortOrder: "asc" },
     include: {
-      _count: { select: { videos: { where: { status: "PUBLISHED" } } } },
+      _count: { select: { videos: { where: { status: "PUBLISHED", promotional: false } } } },
     },
   });
   return rows.map((row) => ({ ...row, videoCount: row._count.videos }));

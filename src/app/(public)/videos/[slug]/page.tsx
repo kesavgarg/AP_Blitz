@@ -25,6 +25,7 @@ export default async function SubjectVideosPage({
   const videos = await prisma.libraryVideo.findMany({
     where: {
       status: "PUBLISHED",
+      promotional: false,
       subjectId: subject.id,
       ...(unit ? { unit } : {}),
       ...(query
@@ -44,7 +45,7 @@ export default async function SubjectVideosPage({
     ...new Set(
       (
         await prisma.libraryVideo.findMany({
-          where: { status: "PUBLISHED", subjectId: subject.id, unit: { not: null } },
+          where: { status: "PUBLISHED", promotional: false, subjectId: subject.id, unit: { not: null } },
           select: { unit: true },
         })
       )
@@ -53,7 +54,7 @@ export default async function SubjectVideosPage({
     ),
   ];
   return (
-    <BlitzerPrompt ask={user?.role !== "BLITZER"}>
+    <BlitzerPrompt ask={user?.role !== "BLITZER"} limited={!user}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <Link href="/videos" className="text-sm text-paper/60">
         All videos

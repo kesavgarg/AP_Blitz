@@ -246,6 +246,53 @@ export const ROLES: RoleContent[] = [
   },
 ];
 
+export type ApplyLaneId = "one-video" | "video-taker" | "graphic-posts";
+
+export type ApplyLane = {
+  id: ApplyLaneId;
+  name: string;
+  description: string;
+  weekly: string;
+  team: TeamKey;
+  commitment: "ONE_TIME" | "FULL_TIME";
+  choosesVideos: boolean;
+};
+
+/** What a new applicant can pick. Admins can still assign every role in ROLES. */
+export const APPLY_LANES: ApplyLane[] = [
+  {
+    id: "one-video",
+    name: "One video",
+    description: "Make one video, one time. Not a weekly job.",
+    weekly: "One video, one time",
+    team: "VIDEO_CREATOR",
+    commitment: "ONE_TIME",
+    choosesVideos: false,
+  },
+  {
+    id: "video-taker",
+    name: "Video taker",
+    description: "Full-time on camera. You film every week.",
+    weekly: "At least one video every week",
+    team: "VIDEO_CREATOR",
+    commitment: "FULL_TIME",
+    choosesVideos: true,
+  },
+  {
+    id: "graphic-posts",
+    name: "Graphic posts",
+    description: "Make the Instagram posts, infographics, and graphics.",
+    weekly: "Graphics every week",
+    team: "GRAPHIC_DESIGN",
+    commitment: "FULL_TIME",
+    choosesVideos: false,
+  },
+];
+
+export function getApplyLane(id: string | undefined) {
+  return APPLY_LANES.find((lane) => lane.id === id) ?? null;
+}
+
 export const RETIRED_TEAM_KEYS: TeamKey[] = ["SEO"];
 
 export function isActiveTeamKey(key: TeamKey) {

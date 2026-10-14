@@ -56,6 +56,10 @@ export default async function EditVideoPage({
         <label className="text-sm">Video URL
           <input name="url" defaultValue={video.url} required className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2" />
         </label>
+        <label className="flex items-center gap-2 text-sm md:col-span-2">
+          <input type="checkbox" name="promotional" defaultChecked={video.promotional} />
+          Promotional. Shows under Watch Promotional, not inside an AP class.
+        </label>
         <label className="text-sm">AP subject
           <select name="subjectId" defaultValue={video.subjectId} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2">
             {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}

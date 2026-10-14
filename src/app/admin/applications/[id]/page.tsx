@@ -36,23 +36,29 @@ export default async function ApplicationDetail({
           {app.email} · {app.phone}
         </p>
         <p className="mt-2 text-xs text-paper/40">Submitted {formatDateTime(app.submittedAt)}</p>
+        {app.photoUrl ? (
+          // Applicant photo stored on our file route. Admin session is required to load it.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={app.photoUrl} alt="" className="mt-4 h-40 w-40 rounded-2xl object-cover" />
+        ) : null}
+        <p className="mt-4 text-sm">
+          {app.commitment === "ONE_TIME"
+            ? "One video, one time"
+            : app.videoLane === "PROMOTIONAL"
+              ? "Video taker · promotional videos only"
+              : app.videoLane === "EDUCATIONAL"
+                ? "Video taker · educational videos"
+                : getRoleByKey(app.firstChoice)?.name ?? app.firstChoice}
+        </p>
         {nos > 0 ? (
           <p className="mt-4 rounded-xl bg-coral/20 px-3 py-2 text-sm text-coral">
             Answered No to {nos} expectation question{nos > 1 ? "s" : ""}.
           </p>
         ) : null}
-        <Section t="AP classes" b={app.apClasses} />
-        <Section t="First choice" b={getRoleByKey(app.firstChoice)?.name ?? app.firstChoice} />
-        <Section t="Second choice" b={getRoleByKey(app.secondChoice)?.name ?? app.secondChoice} />
-        <Section t="Experience" b={app.experience || "—"} />
-        <Section t="Deadline scenario" b={app.deadlineScenario} />
-        <Section t="Additional" b={app.additionalInfo || "—"} />
         <div className="mt-6 grid gap-2 text-sm">
-          <p>Contribute (not just GC): {app.expectContribute}</p>
-          <p>Respond in reasonable time: {app.expectRespond}</p>
-          <p>Inactivity may mean removal: {app.expectRemoval}</p>
-          <p>Educational, not spam: {app.expectConduct}</p>
-          <p>Meet deadlines: {app.expectDeadlines}</p>
+          <p>Keeps the site open for notifications: {app.expectContribute}</p>
+          <p>Understands they can be removed: {app.expectRemoval}</p>
+          <p>Weekly deadline: {app.expectDeadlines}</p>
         </div>
       </article>
       <div className="space-y-4">

@@ -1,3 +1,11 @@
+export const SUBJECT_LOGOS: Record<string, string> = {
+  "ap-human-geography": "/logo-hug.png",
+  "ap-world-history": "/logo-world.png",
+  "ap-psychology": "/logo-psych.png",
+};
+
+export const PROMOTIONAL_LOGO = "/logo-promotional.png";
+
 export type SubjectIcon =
   | "geo"
   | "world"

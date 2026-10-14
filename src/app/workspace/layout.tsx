@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
 import { canAccessChannel } from "@/lib/rbac";
 import { AlertWatcher } from "@/components/workspace/alert-watcher";
+import { ThemeToggle } from "@/components/workspace/theme-toggle";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -43,6 +44,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
     { href: "/workspace/pipeline", label: "Content Pipeline", icon: "🎬" },
     { href: "/workspace/videos", label: "Videos", icon: "▶️" },
+    { href: "/workspace/trends", label: "Trends", icon: "📈" },
   );
   if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
     items.push({ href: "/admin/applications", label: "Applications", icon: "📥" });
@@ -67,19 +69,21 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         : user.teams[0]?.name ?? "Member";
 
   return (
-    <div className="flex min-h-screen bg-[#f3eee4] text-ink">
+    <div id="workspace-root" className="ws-dark flex min-h-screen bg-[#0c0c10] text-[#f6f1e8]">
       <AlertWatcher baseTitle="AP Blitz" />
       <WorkspaceNav
         items={items}
         name={`${user.firstName} ${user.lastName}`}
         roleLabel={roleLabel}
+        tone="dark"
       />
       <div className="flex min-w-0 flex-1 flex-col pb-28 md:pb-0">
-        <header className="flex h-16 items-center justify-between border-b border-black/5 bg-white/80 px-4 backdrop-blur md:px-8">
+        <header className="flex h-16 items-center justify-between border-b border-white/10 bg-black/50 px-4 backdrop-blur md:px-8">
           <p className="font-display text-lg md:hidden">
             <Image src="/logo-ap-blitz.png" alt="AP Blitz" width={48} height={48} className="h-12 w-12 object-contain" />
           </p>
           <div className="ml-auto flex items-center gap-3 text-sm">
+            <ThemeToggle />
             <Link href="/workspace/notifications" className="rounded-full bg-ink px-3 py-1 text-paper">
               {unread + unreadMessages ? `${unread + unreadMessages} new` : "Caught up"}
             </Link>

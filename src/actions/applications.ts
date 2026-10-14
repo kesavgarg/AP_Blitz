@@ -9,6 +9,8 @@ import { revalidatePath } from "next/cache";
 import { logActivity, nextApplicationId, notify } from "@/lib/activity";
 import { sendAdminApplicationNotice, sendApplicationReceived } from "@/lib/email";
 import { getOrgSettings } from "@/lib/settings";
+import { getApplyLane } from "@/lib/roles";
+import { saveUpload } from "@/lib/files";
 
 export type ApplyState = {
   error?: string;
@@ -35,17 +37,11 @@ export async function submitApplication(
     cityCounty: formData.get("cityCounty"),
     email: formData.get("email"),
     phone: formData.get("phone"),
-    apClasses: formData.get("apClasses"),
-    firstChoice: formData.get("firstChoice"),
-    secondChoice: formData.get("secondChoice"),
-    experience: formData.get("experience") || "",
-    expectContribute: formData.get("expectContribute"),
-    expectRespond: formData.get("expectRespond"),
-    expectRemoval: formData.get("expectRemoval"),
-    expectConduct: formData.get("expectConduct"),
-    expectDeadlines: formData.get("expectDeadlines"),
-    deadlineScenario: formData.get("deadlineScenario"),
-    additionalInfo: formData.get("additionalInfo") || "",
+    lane: formData.get("lane"),
+    videoLane: formData.get("videoLane") || "",
+    keepSiteOpen: formData.get("keepSiteOpen"),
+    canBeRemoved: formData.get("canBeRemoved"),
+    weeklyDeadline: formData.get("weeklyDeadline"),
   });
 
   if (!parsed.success) {
@@ -56,6 +52,31 @@ export async function submitApplication(
   }
 
   const data = parsed.data;
+  const lane = getApplyLane(data.lane);
+  if (!lane) return { error: "Pick one of the three roles." };
+  if (data.keepSiteOpen !== "YES" || data.canBeRemoved !== "YES" || data.weeklyDeadline !== "YES") {
+    return { error: "You have to agree to all three of those to apply." };
+  }
+  if (lane.choosesVideos && data.videoLane !== "EDUCATIONAL" && data.videoLane !== "PROMOTIONAL") {
+    return { error: "Video takers need to choose educational videos or promotional videos." };
+  }
+  const photo = formData.get("photo");
+  if (!(photo instanceof File) || photo.size < 1) {
+    return { error: "Upload a photo of yourself. That part is required." };
+  }
+  const founder = await prisma.user.findFirst({
+    where: { role: "FOUNDER", isActive: true },
+    select: { id: true },
+  });
+  if (!founder) return { error: "Applications are not open yet." };
+  let photoUrl = "";
+  try {
+    const saved = await saveUpload(photo, founder.id);
+    photoUrl = `/api/files/${saved.id}`;
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "That photo could not be saved. Use a JPG or PNG." };
+  }
+
   const applicationId = await nextApplicationId();
   const created = await prisma.application.create({
     data: {
@@ -67,17 +88,20 @@ export async function submitApplication(
       cityCounty: data.cityCounty,
       email: data.email.toLowerCase(),
       phone: data.phone,
-      apClasses: data.apClasses,
-      firstChoice: data.firstChoice,
-      secondChoice: data.secondChoice,
-      experience: data.experience || null,
-      expectContribute: data.expectContribute,
-      expectRespond: data.expectRespond,
-      expectRemoval: data.expectRemoval,
-      expectConduct: data.expectConduct,
-      expectDeadlines: data.expectDeadlines,
-      deadlineScenario: data.deadlineScenario,
-      additionalInfo: data.additionalInfo || null,
+      apClasses: "Not asked on this form.",
+      firstChoice: lane.team,
+      secondChoice: lane.team,
+      experience: null,
+      expectContribute: "YES",
+      expectRespond: "YES",
+      expectRemoval: "YES",
+      expectConduct: "YES",
+      expectDeadlines: "YES",
+      deadlineScenario: "Agreed to weekly deadlines on the short form.",
+      additionalInfo: null,
+      photoUrl,
+      commitment: lane.commitment,
+      videoLane: lane.choosesVideos ? String(data.videoLane) : "",
     },
   });
 

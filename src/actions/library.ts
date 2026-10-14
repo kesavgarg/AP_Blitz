@@ -80,6 +80,7 @@ export async function saveLibraryVideo(formData: FormData) {
     ownerId,
     deadline,
     contentItemId,
+    promotional: formData.get("promotional") === "on",
   };
 
   let videoId = id;

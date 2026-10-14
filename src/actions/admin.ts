@@ -97,6 +97,7 @@ export async function acceptApplication(formData: FormData) {
         isActive: true,
         mustChangePassword: true,
         passwordHash,
+        imageUrl: app.photoUrl || null,
       },
     });
     userId = user.id;
@@ -107,8 +108,9 @@ export async function acceptApplication(formData: FormData) {
         role: existing.role === "FOUNDER" ? "FOUNDER" : permission,
         isActive: true,
         mustChangePassword: existing.role === "FOUNDER" || keepBlitzerPassword ? false : true,
-        passwordHash: keepBlitzerPassword ? existing.passwordHash : passwordHash,
+        passwordHash: keepBlitzerPassword ? existing.passwordHash :         passwordHash,
         phone: existing.phone ?? app.phone,
+        imageUrl: app.photoUrl || existing.imageUrl,
       },
     });
     if (existing.role !== "FOUNDER" && existing.role !== permission) {
@@ -215,6 +217,12 @@ export async function removeMemberFromTeam(formData: FormData) {
   const teamId = String(formData.get("teamId") || "");
   if (!userId || !teamId) return;
   await prisma.teamMembership.deleteMany({ where: { userId, teamId } });
+  const left = await prisma.teamMembership.count({ where: { userId } });
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (left === 0 && target?.role === "TEAM_ADMIN") {
+    await prisma.user.update({ where: { id: userId }, data: { role: "MEMBER" } });
+    await revokeUserSessions(userId);
+  }
   await logActivity({
     userId: founder.id,
     action: `${founder.firstName} removed a member from a role`,
@@ -264,6 +272,27 @@ export async function setTeamLeader(formData: FormData) {
     });
   }
   revalidatePath("/admin/team");
+}
+
+export async function clearMemberTeams(formData: FormData) {
+  const founder = await requireFounder();
+  const userId = String(formData.get("userId") || "");
+  if (!userId || userId === founder.id) return;
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, firstName: true } });
+  if (!target || target.role === "FOUNDER") return;
+  await prisma.teamMembership.deleteMany({ where: { userId } });
+  if (target.role !== "MEMBER" && target.role !== "BLITZER") {
+    await prisma.user.update({ where: { id: userId }, data: { role: "MEMBER" } });
+    await revokeUserSessions(userId);
+  }
+  await logActivity({
+    userId: founder.id,
+    action: `${founder.firstName} cleared ${target.firstName} off every team`,
+    objectType: "User",
+    objectId: userId,
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
 }
 
 export async function deactivateUser(formData: FormData) {

@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { WatchPlayer } from "@/components/public/watch-player";
 import { ViewRecorder } from "@/components/public/view-recorder";
+import { GuestWatchClaim, RegisterToWatchMore } from "@/components/public/guest-watch";
 import { toggleSavedVideoAction } from "@/actions/student";
 import { formatTimestamp } from "@/lib/videos";
 import { formatDate } from "@/lib/utils";
+import { GUEST_VIDEO_COOKIE, guestVideoFromCookie } from "@/lib/guest-watch";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +24,15 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   });
   if (!video) notFound();
   const user = await getSessionUser();
+  const guestVideo = user ? null : guestVideoFromCookie((await cookies()).get(GUEST_VIDEO_COOKIE)?.value);
+  const blocked = Boolean(guestVideo && guestVideo !== video.id);
   const saved = user?.role === "BLITZER"
     ? await prisma.savedVideo.findUnique({ where: { userId_videoId: { userId: user.id, videoId: video.id } } })
     : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-20">
-      <ViewRecorder videoId={video.id} />
+      {blocked ? null : <ViewRecorder videoId={video.id} />}
       <Link href={`/videos/${video.subject.slug}`} className="text-sm font-semibold" style={{ color: video.subject.color }}>
         {video.subject.name}
       </Link>
@@ -51,19 +56,28 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             Become a Blitzer to save this
           </Link>
         )}
-        <a href={video.url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">
-          Open on {video.platform}
-        </a>
+        {blocked ? null : (
+          <a href={video.url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">
+            Open on {video.platform}
+          </a>
+        )}
       </div>
       <div className="mt-8">
-        <WatchPlayer
-          videoId={video.id}
-          title={video.title}
-          url={video.url}
-          platform={video.platform}
-          chapters={video.chapters}
-          canSaveProgress={user?.role === "BLITZER"}
-        />
+        {blocked ? (
+          <RegisterToWatchMore />
+        ) : (
+          <>
+            {user ? null : <GuestWatchClaim videoId={video.id} />}
+            <WatchPlayer
+              videoId={video.id}
+              title={video.title}
+              url={video.url}
+              platform={video.platform}
+              chapters={video.chapters}
+              canSaveProgress={user?.role === "BLITZER"}
+            />
+          </>
+        )}
       </div>
     </div>
   );

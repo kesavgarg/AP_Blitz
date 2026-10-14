@@ -3,6 +3,7 @@ import { getOrgSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
 import { ClipEmbed, VideoEmbed } from "@/components/public/video-embed";
 import { SubjectCard } from "@/components/public/subject-card";
+import { SUBJECT_LOGOS } from "@/lib/subjects";
 import { listSubjects } from "@/lib/catalog";
 import { prisma } from "@/lib/prisma";
 
@@ -78,6 +79,7 @@ export default async function HomePage() {
                 ink={subject.ink}
                 icon={subject.icon}
                 count={subject.videoCount}
+                logo={SUBJECT_LOGOS[subject.slug]}
               />
             ))}
           </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { RegisterForm } from "@/components/auth/register-form";
-import { ROLES } from "@/lib/roles";
+import { APPLY_LANES } from "@/lib/roles";
 import { getOrgSettings } from "@/lib/settings";
 
 export const metadata = { title: "Join" };
@@ -48,11 +48,11 @@ export default async function RegisterPage({
               Continue to the application
             </Link>
             <div className="mt-8 grid gap-4">
-              {ROLES.map((role) => (
-                <article key={role.slug} className="rounded-3xl border border-white/10 p-5">
-                  <h3 className="font-display text-2xl">{role.emoji} {role.name}</h3>
-                  <p className="mt-2 text-sm text-paper/70">{role.description}</p>
-                  <p className="mt-2 text-sm text-muted">{role.tagline}</p>
+              {APPLY_LANES.map((lane) => (
+                <article key={lane.id} className="rounded-3xl border border-white/10 p-5">
+                  <h3 className="font-display text-2xl">{lane.name}</h3>
+                  <p className="mt-2 text-sm text-paper/70">{lane.description}</p>
+                  <p className="mt-2 text-sm text-muted">{lane.weekly}</p>
                 </article>
               ))}
             </div>

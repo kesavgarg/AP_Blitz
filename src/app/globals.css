@@ -135,3 +135,35 @@ button:disabled,
     animation: none;
   }
 }
+
+#workspace-root.ws-dark .bg-white {
+  background-color: #17171c !important;
+  color: #f6f1e8;
+}
+#workspace-root.ws-dark .text-ink {
+  color: #f6f1e8 !important;
+}
+#workspace-root.ws-dark .text-ink\/60,
+#workspace-root.ws-dark .text-ink\/50,
+#workspace-root.ws-dark .text-ink\/40 {
+  color: rgba(246, 241, 232, 0.62) !important;
+}
+#workspace-root.ws-dark .border-black\/10,
+#workspace-root.ws-dark .border-black\/5 {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+#workspace-root.ws-light {
+  background: #f3eee4 !important;
+  color: #111 !important;
+}
+#workspace-root.ws-light header,
+#workspace-root.ws-light aside,
+#workspace-root.ws-light nav.fixed {
+  background: #fff !important;
+  color: #111 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+#workspace-root.ws-light aside a,
+#workspace-root.ws-light nav.fixed a {
+  color: #333;
+}

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireFounder } from "@/lib/auth";
-import { deactivateUser, setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam } from "@/actions/admin";
+import { deactivateUser, setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam, clearMemberTeams } from "@/actions/admin";
 import { isActiveTeamKey, ROLES } from "@/lib/roles";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -50,18 +50,25 @@ export default async function AdminTeamPage() {
               <div className="flex flex-wrap gap-2 text-xs">
                 <form action={updateMemberRole} className="flex gap-2">
                   <input type="hidden" name="userId" value={u.id} />
-                  <select name="role" defaultValue={u.role} className="rounded-lg bg-ink px-2 py-1">
+                  <select name="role" defaultValue={u.role === "FOUNDER" ? "FOUNDER" : u.role} className="rounded-lg bg-ink px-2 py-1">
+                    {u.role === "FOUNDER" ? <option value="FOUNDER">Founder</option> : null}
                     <option value="MEMBER">Member</option>
                     <option value="TEAM_ADMIN">Team admin</option>
-                    <option value="FOUNDER">Founder</option>
+                    <option value="BLITZER">Blitzer</option>
                   </select>
                   <button className="underline">Save</button>
                 </form>
                 {u.role !== "FOUNDER" ? (
-                  <form action={deactivateUser}>
-                    <input type="hidden" name="userId" value={u.id} />
-                    <button className="text-coral">Deactivate</button>
-                  </form>
+                  <>
+                    <form action={clearMemberTeams}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <SubmitButton className="text-coral">Remove all teams and roles</SubmitButton>
+                    </form>
+                    <form action={deactivateUser}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button className="text-coral">Deactivate</button>
+                    </form>
+                  </>
                 ) : null}
               </div>
             </div>

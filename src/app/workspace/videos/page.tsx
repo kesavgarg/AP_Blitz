@@ -44,6 +44,10 @@ export default async function WorkspaceVideosPage({
       <form action={saveLibraryVideo} className="mt-6 grid gap-3 rounded-3xl bg-white p-4 md:grid-cols-2">
         <input name="title" required placeholder="Title" className="rounded-xl border border-black/10 px-3 py-2" />
         <input name="url" required placeholder="YouTube or Instagram URL" className="rounded-xl border border-black/10 px-3 py-2" />
+        <label className="flex items-center gap-2 text-sm md:col-span-2">
+          <input type="checkbox" name="promotional" />
+          Promotional. Shows under Watch Promotional, not inside an AP class.
+        </label>
         <select name="subjectId" required className="rounded-xl border border-black/10 px-3 py-2">
           <option value="">AP subject</option>
           {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}

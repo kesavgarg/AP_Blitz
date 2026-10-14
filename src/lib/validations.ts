@@ -18,21 +18,11 @@ export const applicationSchema = z.object({
   cityCounty: z.string().trim().min(1, "City/County is required").max(160),
   email: z.string().trim().email("Enter a valid email").max(160),
   phone: z.string().trim().min(7, "Enter a valid phone number").max(40),
-  apClasses: z.string().trim().min(2, "List your AP classes").max(4000),
-  firstChoice: teamKeyEnum,
-  secondChoice: teamKeyEnum,
-  experience: z.string().trim().max(4000).optional().or(z.literal("")),
-  expectContribute: yesNo,
-  expectRespond: yesNo,
-  expectRemoval: yesNo,
-  expectConduct: yesNo,
-  expectDeadlines: yesNo,
-  deadlineScenario: z
-    .string()
-    .trim()
-    .min(12, "Tell us what you would do in this situation")
-    .max(4000),
-  additionalInfo: z.string().trim().max(4000).optional().or(z.literal("")),
+  lane: z.enum(["one-video", "video-taker", "graphic-posts"]),
+  videoLane: z.enum(["EDUCATIONAL", "PROMOTIONAL"]).optional().or(z.literal("")),
+  keepSiteOpen: yesNo,
+  canBeRemoved: yesNo,
+  weeklyDeadline: yesNo,
 });
 
 export const loginSchema = z.object({

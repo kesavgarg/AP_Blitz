@@ -4,6 +4,7 @@ import { bootCatalog } from "@/lib/catalog";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
 import { WelcomePopup } from "@/components/public/welcome-popup";
+import { FollowPrompt } from "@/components/public/follow-prompt";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   await bootCatalog();
@@ -21,6 +22,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <main>{children}</main>
       <PublicFooter email={settings.contactEmail} phone={settings.contactPhone} instagramUrl={settings.instagramUrl} />
       <WelcomePopup instagramUrl={settings.instagramUrl} signedIn={Boolean(user)} />
+      <FollowPrompt instagramUrl={settings.instagramUrl || undefined} />
     </div>
   );
 }

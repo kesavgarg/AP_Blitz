@@ -9,6 +9,7 @@ export function SubjectCard({
   icon,
   count,
   badge,
+  logo,
 }: {
   href: string;
   name: string;
@@ -17,7 +18,24 @@ export function SubjectCard({
   icon: string;
   count: number;
   badge?: string;
+  logo?: string;
 }) {
+  if (logo) {
+    return (
+      <Link
+        href={href}
+        className="group relative block min-h-60 overflow-hidden rounded-[1.75rem] shadow-[0_24px_50px_-28px_rgba(0,0,0,0.85)] transition duration-200 hover:-translate-y-1"
+        style={{ backgroundColor: color }}
+      >
+        {/* Real subject mark, same crop on every card of this class. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo} alt={name} className="h-72 w-full object-contain" />
+        <p className="absolute left-4 top-4 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+          {count} {count === 1 ? "video" : "videos"}
+        </p>
+      </Link>
+    );
+  }
   return (
     <Link
       href={href}

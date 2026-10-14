@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { SubjectCard } from "@/components/public/subject-card";
 import { VideoCard } from "@/components/public/video-card";
 import { BlitzerPrompt } from "@/components/public/blitzer-prompt";
+import { PROMOTIONAL_LOGO, SUBJECT_LOGOS } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Watch videos" };
@@ -32,7 +33,7 @@ export default async function VideosPage({
         }
       : {}),
   };
-  const [recent, popularRaw, continueWatching] = await Promise.all([
+  const [recent, popularRaw, continueWatching, promoCount] = await Promise.all([
     prisma.libraryVideo.findMany({
       where: publishedWhere,
       include: { subject: true },
@@ -53,10 +54,11 @@ export default async function VideosPage({
           take: 6,
         })
       : Promise.resolve([]),
+    prisma.libraryVideo.count({ where: { status: "PUBLISHED", promotional: true } }),
   ]);
 
   return (
-    <BlitzerPrompt ask={user?.role !== "BLITZER"}>
+    <BlitzerPrompt ask={user?.role !== "BLITZER"} limited={!user}>
     <div className="mx-auto max-w-6xl px-4 pb-20">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt">Video library</p>
       <h1 className="mt-3 font-display text-5xl leading-none">Watch AP videos</h1>
@@ -65,7 +67,7 @@ export default async function VideosPage({
       </p>
       {!user ? (
         <p className="mt-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm">
-          Watching is free. <Link href="/register" className="font-semibold text-volt">Become a Blitzer</Link> to save videos, pick your classes, and request topics.
+          <Link href="/register" className="font-semibold text-volt">Become a Blitzer</Link> to save videos, pick your classes, and request topics. Guests can watch one video.
         </p>
       ) : null}
 
@@ -114,8 +116,18 @@ export default async function VideosPage({
                 ink={item.ink}
                 icon={item.icon}
                 count={item.videoCount}
+                logo={SUBJECT_LOGOS[item.slug]}
               />
             ))}
+            <SubjectCard
+              href="/videos/promotional"
+              name="Promotional"
+              color="#111111"
+              ink="#f6f1e8"
+              icon="book"
+              count={promoCount}
+              logo={PROMOTIONAL_LOGO}
+            />
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted">No published videos match that yet.</p>
