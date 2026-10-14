@@ -21,6 +21,7 @@ const registerSchema = z
       .regex(/[A-Za-z]/, "Include a letter")
       .regex(/[0-9]/, "Include a number"),
     confirm: z.string(),
+    followsInstagram: z.enum(["yes", "no"], { message: "Tell us if you follow AP Blitz on Instagram." }),
   })
   .refine((data) => data.password === data.confirm, {
     message: "Passwords do not match",
@@ -41,6 +42,7 @@ export async function registerBlitzerAction(
     email: formData.get("email"),
     password: formData.get("password"),
     confirm: formData.get("confirm"),
+    followsInstagram: formData.get("followsInstagram"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
 
@@ -59,6 +61,7 @@ export async function registerBlitzerAction(
       passwordHash,
       role: "BLITZER",
       isActive: true,
+      followsInstagram: parsed.data.followsInstagram === "yes",
     },
   });
 
@@ -81,7 +84,7 @@ export async function registerBlitzerAction(
   await createSession(user.id);
   await logActivity({
     userId: user.id,
-    action: `${user.firstName} ${user.lastName} created a Blitzer account`,
+    action: `${user.firstName} ${user.lastName} created a Blitzer account${parsed.data.followsInstagram === "yes" ? " and follows on Instagram" : " and does not follow on Instagram yet"}`,
   });
   if (!welcome.sent) {
     console.info("[welcome-email] not delivered for", email);

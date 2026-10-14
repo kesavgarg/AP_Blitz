@@ -159,6 +159,7 @@ model User {
   highSchool   String?
   cityCounty   String?
   emailVerifiedAt DateTime?
+  followsInstagram Boolean?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   lastLoginAt  DateTime?

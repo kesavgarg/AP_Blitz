@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RegisterForm } from "@/components/auth/register-form";
 import { ROLES } from "@/lib/roles";
+import { getOrgSettings } from "@/lib/settings";
 
 export const metadata = { title: "Join" };
 
@@ -10,6 +11,7 @@ export default async function RegisterPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
+  const settings = await getOrgSettings();
   const blitzer = tab !== "apply";
   return (
     <div className="mx-auto max-w-3xl px-4 pb-20">
@@ -33,7 +35,7 @@ export default async function RegisterPage({
             <h2 className="font-display text-3xl">Create a Blitzer account</h2>
             <p className="mt-2 text-sm text-muted">Use at least 10 characters, with a letter and a number.</p>
             <div className="mt-5">
-              <RegisterForm />
+              <RegisterForm instagramUrl={settings.instagramUrl || undefined} />
             </div>
           </>
         ) : (
