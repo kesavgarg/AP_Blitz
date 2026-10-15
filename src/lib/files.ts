@@ -109,14 +109,21 @@ export async function saveUpload(file: File, uploadedById: string, extra?: {
 
   const blobUrl = await storeBlob(storedName, file, mime);
   let dest = blobUrl ?? "";
+  let bytes: Uint8Array<ArrayBuffer> | undefined;
   if (!blobUrl) {
     if (process.env.VERCEL) {
-      throw new Error("Uploads need object storage. Set BLOB_READ_WRITE_TOKEN.");
+      // Vercel disk does not keep files. Photos stay on the row until blob storage is configured.
+      if (!IMAGE_TYPES.has(mime)) {
+        throw new Error("That file needs storage that is not set up yet. Use a photo.");
+      }
+      bytes = new Uint8Array(await file.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+      dest = "db";
+    } else {
+      const dir = uploadRoot();
+      dest = path.join(dir, storedName);
+      await mkdir(dir, { recursive: true });
+      await pipeline(Readable.fromWeb(file.stream() as never), createWriteStream(dest));
     }
-    const dir = uploadRoot();
-    dest = path.join(dir, storedName);
-    await mkdir(dir, { recursive: true });
-    await pipeline(Readable.fromWeb(file.stream() as never), createWriteStream(dest));
   }
 
   return prisma.fileAsset.create({
@@ -126,6 +133,7 @@ export async function saveUpload(file: File, uploadedById: string, extra?: {
       mimeType: mime,
       size: file.size,
       path: dest,
+      bytes,
       uploadedById,
       contentItemId: extra?.contentItemId,
       designRequestId: extra?.designRequestId,
