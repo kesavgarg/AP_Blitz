@@ -75,6 +75,29 @@ export function uploadRoot() {
   return path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
 }
 
+async function shrinkPhoto(file: File): Promise<Uint8Array<ArrayBuffer>> {
+  const input = Buffer.from(await file.arrayBuffer());
+  try {
+    const sharp = (await import("sharp")).default;
+    const out = await sharp(input, { failOn: "none" })
+      .rotate()
+      .resize(1400, 1400, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    const copy = new Uint8Array(out.byteLength);
+    copy.set(out);
+    return copy as Uint8Array<ArrayBuffer>;
+  } catch {
+    const heic = file.type === "image/heic" || file.type === "image/heif" || /\.hei[cf]$/i.test(file.name);
+    if (heic) {
+      throw new Error("Save the photo as a JPG, then upload that.");
+    }
+    const copy = new Uint8Array(input.byteLength);
+    copy.set(input);
+    return copy as Uint8Array<ArrayBuffer>;
+  }
+}
+
 async function storeBlob(storedName: string, file: File, mime: string) {
   const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
   if (!token) return null;
@@ -105,7 +128,9 @@ export async function saveUpload(file: File, uploadedById: string, extra?: {
   }
   const ext = path.extname(file.name).toLowerCase();
   const safeExt = EXT_MIME[ext] ? ext : "";
-  const storedName = `${crypto.randomUUID()}${safeExt}`;
+  let storedName = `${crypto.randomUUID()}${safeExt}`;
+  let storedMime = mime;
+  let storedSize = file.size;
 
   const blobUrl = await storeBlob(storedName, file, mime);
   let dest = blobUrl ?? "";
@@ -116,7 +141,10 @@ export async function saveUpload(file: File, uploadedById: string, extra?: {
       if (!IMAGE_TYPES.has(mime)) {
         throw new Error("That file needs storage that is not set up yet. Use a photo.");
       }
-      bytes = new Uint8Array(await file.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+      bytes = await shrinkPhoto(file);
+      storedMime = "image/jpeg";
+      storedSize = bytes.byteLength;
+      storedName = `${crypto.randomUUID()}.jpg`;
       dest = "db";
     } else {
       const dir = uploadRoot();
@@ -130,8 +158,8 @@ export async function saveUpload(file: File, uploadedById: string, extra?: {
     data: {
       filename: file.name.replace(/[\r\n"]/g, "").slice(0, 180) || "file",
       storedName,
-      mimeType: mime,
-      size: file.size,
+      mimeType: storedMime,
+      size: storedSize,
       path: dest,
       bytes,
       uploadedById,

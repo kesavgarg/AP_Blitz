@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { requireFounder } from "@/lib/auth";
-import { setTeamLeader, updateMemberRole, addMemberToTeam, removeMemberFromTeam, clearMemberTeams } from "@/actions/admin";
+import { setTeamLeader, updateMemberRole, addMemberToTeam } from "@/actions/admin";
 import { isActiveTeamKey, ROLES } from "@/lib/roles";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { KickButton } from "@/components/admin/kick-button";
+import { KickButton, RemoveRoleButton } from "@/components/admin/kick-button";
 import type { PermissionRole, TeamKey } from "@prisma/client";
 
 export default async function AdminTeamPage() {
@@ -33,7 +33,7 @@ export default async function AdminTeamPage() {
       <h1 className="font-display text-4xl">Team</h1>
       <p className="mt-2 text-sm text-paper/60">
         Club members are the people who make videos and posts. Blitzers are the student accounts.
-        Kicking someone deletes the account. They have to sign up again, and login says no account found.
+        Remove from AP Blitz deletes their account. They have to apply again, and login says no account found.
       </p>
       <Section title="Club members" people={members} />
       <Section title="Blitzers" people={blitzers} />
@@ -89,13 +89,7 @@ function Section({
                   <button className="underline">Save</button>
                 </form>
                 {u.role !== "FOUNDER" ? (
-                  <>
-                    <form action={clearMemberTeams}>
-                      <input type="hidden" name="userId" value={u.id} />
-                      <SubmitButton className="text-coral">Remove all teams and roles</SubmitButton>
-                    </form>
-                    <KickButton userId={u.id} name={`${u.firstName} ${u.lastName}`} />
-                  </>
+                  <KickButton userId={u.id} name={`${u.firstName} ${u.lastName}`} />
                 ) : null}
               </div>
             </div>
@@ -112,13 +106,13 @@ function Section({
                         {m.isLeader ? `Remove ${m.team.name} lead` : `Make ${m.team.name} lead`}
                       </button>
                     </form>
-                    <form action={removeMemberFromTeam}>
-                      <input type="hidden" name="userId" value={u.id} />
-                      <input type="hidden" name="teamId" value={m.teamId} />
-                      <SubmitButton className="rounded-full border border-coral/40 px-3 py-1 text-xs text-coral">
-                        Remove {m.team.name}
-                      </SubmitButton>
-                    </form>
+                    <RemoveRoleButton
+                      userId={u.id}
+                      teamId={m.teamId}
+                      teamName={m.team.name}
+                      name={`${u.firstName} ${u.lastName}`}
+                      onlyRole={u.memberships.filter((row) => isActiveTeamKey(row.team.key)).length === 1}
+                    />
                   </div>
                 ))}
               {ROLES.filter((r) => !u.memberships.some((m) => m.team.key === r.key)).length ? (

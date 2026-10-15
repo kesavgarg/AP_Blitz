@@ -216,18 +216,63 @@ export async function addMemberToTeam(formData: FormData) {
   revalidatePath("/workspace/team");
 }
 
+async function deleteMemberAccount(founderId: string, founderName: string, userId: string) {
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, firstName: true, lastName: true, email: true },
+  });
+  if (!target || target.role === "FOUNDER" || userId === founderId) return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.application.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } });
+    await tx.application.updateMany({ where: { acceptedUserId: userId }, data: { acceptedUserId: null } });
+    await tx.messagePin.deleteMany({ where: { userId } });
+    await tx.message.deleteMany({ where: { authorId: userId } });
+    await tx.socialIdea.updateMany({ where: { authorId: userId }, data: { authorId: founderId } });
+    await tx.script.updateMany({ where: { authorId: userId }, data: { authorId: founderId } });
+    await tx.fileAsset.updateMany({ where: { uploadedById: userId }, data: { uploadedById: founderId } });
+    await tx.task.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });
+    await tx.task.updateMany({ where: { creatorId: userId }, data: { creatorId: founderId } });
+    await tx.meeting.updateMany({ where: { hostId: userId }, data: { hostId: founderId } });
+    await tx.trendLink.updateMany({ where: { createdById: userId }, data: { createdById: founderId } });
+    await tx.trendLink.updateMany({ where: { claimedById: userId }, data: { claimedById: null } });
+    await tx.announcement.updateMany({ where: { authorId: userId }, data: { authorId: founderId } });
+    await tx.contentItem.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
+    await tx.contentItem.updateMany({ where: { completedById: userId }, data: { completedById: null } });
+    await tx.seoRequest.updateMany({ where: { specialistId: userId }, data: { specialistId: null } });
+    await tx.calendarEvent.updateMany({ where: { createdById: userId }, data: { createdById: null } });
+    await tx.libraryVideo.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
+    await tx.libraryVideo.updateMany({ where: { publishedById: userId }, data: { publishedById: null } });
+    await tx.videoEvent.updateMany({ where: { userId }, data: { userId: null } });
+    await tx.activityLog.updateMany({ where: { userId }, data: { userId: null } });
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  await logActivity({
+    userId: founderId,
+    action: `${founderName} removed ${target.firstName} ${target.lastName} from AP Blitz`,
+    objectType: "User",
+    objectId: userId,
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
+}
+
 export async function removeMemberFromTeam(formData: FormData) {
   const founder = await requireFounder();
   const userId = String(formData.get("userId") || "");
   const teamId = String(formData.get("teamId") || "");
-  if (!userId || !teamId) return;
-  await prisma.teamMembership.deleteMany({ where: { userId, teamId } });
-  const left = await prisma.teamMembership.count({ where: { userId } });
-  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  if (left === 0 && target?.role === "TEAM_ADMIN") {
-    await prisma.user.update({ where: { id: userId }, data: { role: "MEMBER" } });
-    await revokeUserSessions(userId);
+  if (!userId || !teamId || userId === founder.id) return;
+  const others = await prisma.teamMembership.findMany({
+    where: { userId, teamId: { not: teamId } },
+    select: { team: { select: { key: true } } },
+  });
+  if (!others.some((row) => isActiveTeamKey(row.team.key))) {
+    await deleteMemberAccount(founder.id, founder.firstName, userId);
+    return;
   }
+  await prisma.teamMembership.deleteMany({ where: { userId, teamId } });
   await logActivity({
     userId: founder.id,
     action: `${founder.firstName} removed a member from a role`,
@@ -282,68 +327,15 @@ export async function setTeamLeader(formData: FormData) {
 export async function clearMemberTeams(formData: FormData) {
   const founder = await requireFounder();
   const userId = String(formData.get("userId") || "");
-  if (!userId || userId === founder.id) return;
-  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, firstName: true } });
-  if (!target || target.role === "FOUNDER") return;
-  await prisma.teamMembership.deleteMany({ where: { userId } });
-  if (target.role !== "MEMBER" && target.role !== "BLITZER") {
-    await prisma.user.update({ where: { id: userId }, data: { role: "MEMBER" } });
-    await revokeUserSessions(userId);
-  }
-  await logActivity({
-    userId: founder.id,
-    action: `${founder.firstName} cleared ${target.firstName} off every team`,
-    objectType: "User",
-    objectId: userId,
-  });
-  revalidatePath("/admin/team");
-  revalidatePath("/workspace/team");
+  if (!userId) return;
+  await deleteMemberAccount(founder.id, founder.firstName, userId);
 }
 
 export async function kickMember(formData: FormData) {
   const founder = await requireFounder();
   const userId = String(formData.get("userId") || "");
-  if (!userId || userId === founder.id) return;
-  const target = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, firstName: true, lastName: true, email: true },
-  });
-  if (!target || target.role === "FOUNDER") return;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.application.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } });
-    await tx.application.updateMany({ where: { acceptedUserId: userId }, data: { acceptedUserId: null } });
-    await tx.messagePin.deleteMany({ where: { userId } });
-    await tx.message.deleteMany({ where: { authorId: userId } });
-    await tx.socialIdea.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
-    await tx.script.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
-    await tx.fileAsset.updateMany({ where: { uploadedById: userId }, data: { uploadedById: founder.id } });
-    await tx.task.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });
-    await tx.task.updateMany({ where: { creatorId: userId }, data: { creatorId: founder.id } });
-    await tx.meeting.updateMany({ where: { hostId: userId }, data: { hostId: founder.id } });
-    await tx.trendLink.updateMany({ where: { createdById: userId }, data: { createdById: founder.id } });
-    await tx.trendLink.updateMany({ where: { claimedById: userId }, data: { claimedById: null } });
-    await tx.announcement.updateMany({ where: { authorId: userId }, data: { authorId: founder.id } });
-    await tx.contentItem.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
-    await tx.contentItem.updateMany({ where: { completedById: userId }, data: { completedById: null } });
-    await tx.seoRequest.updateMany({ where: { specialistId: userId }, data: { specialistId: null } });
-    await tx.calendarEvent.updateMany({ where: { createdById: userId }, data: { createdById: null } });
-    await tx.libraryVideo.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
-    await tx.libraryVideo.updateMany({ where: { publishedById: userId }, data: { publishedById: null } });
-    await tx.videoEvent.updateMany({ where: { userId }, data: { userId: null } });
-    await tx.activityLog.updateMany({ where: { userId }, data: { userId: null } });
-    await tx.session.deleteMany({ where: { userId } });
-    await tx.user.delete({ where: { id: userId } });
-  });
-
-  await logActivity({
-    userId: founder.id,
-    action: `${founder.firstName} kicked ${target.firstName} ${target.lastName} off AP Blitz`,
-    objectType: "User",
-    objectId: userId,
-  });
-  revalidatePath("/admin/team");
-  revalidatePath("/workspace/team");
+  if (!userId) return;
+  await deleteMemberAccount(founder.id, founder.firstName, userId);
 }
 
 export async function saveOrgSettings(formData: FormData) {

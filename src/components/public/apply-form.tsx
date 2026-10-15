@@ -46,7 +46,7 @@ export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
           <label className="block text-sm md:col-span-2">
             Photo of yourself *
             <p className="mt-1 text-xs text-muted">Required. Kesav sees this with your application.</p>
-            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required className={`${inputClass} file:mr-3 file:rounded-full file:border-0 file:bg-volt file:px-3 file:py-1 file:text-sm file:font-semibold file:text-ink`} />
+            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic" required className={`${inputClass} file:mr-3 file:rounded-full file:border-0 file:bg-volt file:px-3 file:py-1 file:text-sm file:font-semibold file:text-ink`} />
           </label>
         </div>
       </section>
