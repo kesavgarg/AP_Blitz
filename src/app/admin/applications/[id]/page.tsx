@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { GRADE_LABELS, getRoleByKey, ROLES } from "@/lib/roles";
 import { formatDateTime } from "@/lib/utils";
-import { acceptApplication, rejectApplication, updateApplicationStatus } from "@/actions/admin";
+import { acceptApplication, placeOneTimeMember, rejectApplication, updateApplicationStatus } from "@/actions/admin";
 
 export default async function ApplicationDetail({
   params,
@@ -39,7 +39,12 @@ export default async function ApplicationDetail({
         {app.photoUrl ? (
           // Applicant photo stored on our file route. Admin session is required to load it.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={app.photoUrl} alt="" className="mt-4 h-40 w-40 rounded-2xl object-cover" />
+          <img src={app.photoUrl} alt="" className={`mt-4 rounded-2xl object-cover ${app.commitment === "ONE_TIME" ? "h-72 w-72" : "h-40 w-40"}`} />
+        ) : (
+          <p className="mt-4 text-sm text-coral">No photo uploaded.</p>
+        )}
+        {app.commitment === "ONE_TIME" ? (
+          <p className="mt-3 text-sm text-volt">Photo is in. Decide if they should film one video.</p>
         ) : null}
         <p className="mt-4 text-sm">
           {app.commitment === "ONE_TIME"
@@ -101,7 +106,20 @@ export default async function ApplicationDetail({
           </select>
           <button className="mt-3 rounded-full border border-white/20 px-4 py-2 text-sm">Update</button>
         </form>
-        {app.status !== "ACCEPTED" ? (
+        {app.status !== "ACCEPTED" && app.commitment === "ONE_TIME" ? (
+          <form action={acceptApplication} className="rounded-3xl border border-volt/30 bg-navy p-5">
+            <h2 className="font-display text-xl">Accept them to film this video?</h2>
+            <p className="mt-1 text-sm text-paper/60">
+              Look at the photo. Accepting emails <strong>{app.email}</strong> a setup link. They only get the one-video steps.
+            </p>
+            <input type="hidden" name="id" value={app.id} />
+            <input type="hidden" name="role" value="VIDEO_CREATOR" />
+            <button className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
+              Accept them to film
+            </button>
+          </form>
+        ) : null}
+        {app.status !== "ACCEPTED" && app.commitment !== "ONE_TIME" ? (
           <form action={acceptApplication} className="rounded-3xl border border-volt/30 bg-navy p-5">
             <h2 className="font-display text-xl">Accept</h2>
             <p className="mt-1 text-sm text-paper/60">
@@ -131,12 +149,33 @@ export default async function ApplicationDetail({
               Accept and email them
             </button>
           </form>
-        ) : (
+        ) : null}
+        {app.status === "ACCEPTED" && app.commitment === "ONE_TIME" && app.joinRequestedAt ? (
+          <form action={placeOneTimeMember} className="rounded-3xl border border-volt/30 bg-navy p-5">
+            <h2 className="font-display text-xl">They want to join</h2>
+            <p className="mt-1 text-sm text-paper/60">
+              {app.firstName} asked to join the team. Pick the team. When they refresh, that workspace is what they see.
+            </p>
+            <input type="hidden" name="id" value={app.id} />
+            <div className="mt-3 grid gap-2">
+              {ROLES.map((r) => (
+                <label key={r.key} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="roles" value={r.key} defaultChecked={r.key === "VIDEO_CREATOR"} />
+                  {r.name}
+                </label>
+              ))}
+            </div>
+            <button className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
+              Put them on this team
+            </button>
+          </form>
+        ) : null}
+        {app.status === "ACCEPTED" ? (
           <p className="rounded-3xl border border-white/10 p-5 text-sm">
             Accepted{app.assignedRole ? ` as ${getRoleByKey(app.assignedRole)?.name ?? app.assignedRole}` : ""}. They
             can open the setup link in their email, or log in with the temporary password sent to {app.email}.
           </p>
-        )}
+        ) : null}
         {app.status !== "REJECTED" ? (
           <form action={rejectApplication} className="rounded-3xl border border-white/10 bg-navy p-5">
             <h2 className="font-display text-xl">Decline</h2>

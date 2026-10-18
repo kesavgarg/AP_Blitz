@@ -107,10 +107,10 @@ export async function loginAction(
         : user.role === "FOUNDER"
           ? "/admin"
           : oneTime
-            ? "/workspace/trends"
+            ? "/workspace/about"
             : "/workspace");
     if (oneTime && dest.startsWith("/workspace") && !oneTimePathAllowed(dest)) {
-      dest = "/workspace/trends";
+      dest = "/workspace/about";
     }
     redirect(dest);
   } catch (err) {
@@ -171,5 +171,5 @@ export async function setupAccountAction(
     userId: invite.userId,
     action: `${invite.user.firstName} ${invite.user.lastName} set up their account`,
   });
-  redirect((await isOneTimeMember(invite.userId, invite.user.role)) ? "/workspace/trends" : "/workspace");
+  redirect((await isOneTimeMember(invite.userId, invite.user.role)) ? "/workspace/about" : "/workspace");
 }

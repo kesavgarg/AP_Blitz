@@ -2,6 +2,7 @@ import { requireFounder } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 import { saveOrgSettings, testEmailSettings, addShowcaseClip, deleteShowcaseClip } from "@/actions/admin";
+import { uploadGuideVideo } from "@/actions/guides";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function SettingsPage() {
@@ -86,6 +87,32 @@ export default async function SettingsPage() {
             </div>
           ))}
         </div>
+      </form>
+
+      <form action={uploadGuideVideo} className="mt-4 space-y-3 rounded-3xl border border-white/10 bg-navy p-5">
+        <h2 className="font-display text-2xl">How to record</h2>
+        <p className="text-sm text-paper/60">
+          For educational video takers. Upload an MP4, MOV, or WEBM from your computer. This is not posted to Instagram.
+        </p>
+        <input type="hidden" name="which" value="record" />
+        <input name="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" required className="w-full text-sm" />
+        <p className="text-sm text-paper/60">
+          {s.howToRecordFileId ? "A video is already on the How to record page. Uploading replaces it." : "Nothing uploaded yet. The page is ready and will play this once you upload it."}
+        </p>
+        <button className="rounded-full bg-volt px-4 py-2 text-sm font-semibold text-ink">Upload how to record</button>
+      </form>
+
+      <form action={uploadGuideVideo} className="mt-4 space-y-3 rounded-3xl border border-white/10 bg-navy p-5">
+        <h2 className="font-display text-2xl">How to record and edit</h2>
+        <p className="text-sm text-paper/60">
+          For promotional video takers. Upload the video where you explain how to record and how to edit. From your computer, not an Instagram link.
+        </p>
+        <input type="hidden" name="which" value="promo" />
+        <input name="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" required className="w-full text-sm" />
+        <p className="text-sm text-paper/60">
+          {s.promoGuideFileId ? "A video is already on the How to record and edit page. Uploading replaces it." : "Nothing uploaded yet. The page is ready and will play this once you upload it."}
+        </p>
+        <button className="rounded-full bg-volt px-4 py-2 text-sm font-semibold text-ink">Upload how to record and edit</button>
       </form>
 
       <form action={testEmailSettings} className="mt-4 space-y-3 rounded-3xl border border-white/10 bg-navy p-5">

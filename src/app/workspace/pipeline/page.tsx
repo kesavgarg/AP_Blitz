@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isAdmin, requireUser } from "@/lib/auth";
 import { createPipelineItem, moveContentStage } from "@/actions/pipeline";
@@ -6,11 +7,13 @@ import { WORK_STAGES } from "@/lib/stages";
 import { AP_SUBJECTS } from "@/lib/ap-subjects";
 import { formatDate } from "@/lib/utils";
 import { workspaceForTeam } from "@/lib/rbac";
+import { isPromotionalMember } from "@/lib/one-time";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
   const user = await requireUser();
+  if (await isPromotionalMember(user.id, user.role)) redirect("/workspace/trends");
   const [items, people] = await Promise.all([
     prisma.contentItem.findMany({
       where: { stage: { not: "COMPLETED" } },
@@ -29,6 +32,7 @@ export default async function PipelinePage() {
         ["/workspace/edit", "Editing"],
         ["/workspace/design", "Design"],
         ["/workspace/social", "Social ideas"],
+        ["/workspace/five", "5 For 5"],
       ]
     : user.teams.filter((team) => team.key !== "SEO").map((team) => [workspaceForTeam(team.key), team.name]);
 

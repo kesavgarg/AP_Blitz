@@ -5,7 +5,8 @@ export type RoleSlug =
   | "script-writer"
   | "video-editor"
   | "social-media"
-  | "graphic-designer";
+  | "graphic-designer"
+  | "five-for-five";
 
 export type RoleContent = {
   slug: RoleSlug;
@@ -244,9 +245,54 @@ export const ROLES: RoleContent[] = [
       "Build a 5-slide carousel from an approved outline",
     ],
   },
+  {
+    slug: "five-for-five",
+    key: "FIVE_FOR_FIVE",
+    name: "5 For 5",
+    shortName: "5 For 5",
+    tagline: "One course doc. Every unit. A five-minute video.",
+    description:
+      "Source creators. One Google Doc is one AP course. Each unit gets quizzes, a test, the written questions that course uses, and a landscape video.",
+    accent: "#f5c451",
+    emoji: "📚",
+    weekly: "Keep building course docs. A unit is not done until the questions are checked and the 5-minute video is linked.",
+    responsibilities: [
+      "Creating one Google Doc per AP course",
+      "Adding a tab for each unit in that course",
+      "Writing a quiz for every topic and checking every question",
+      "Writing a test for the whole unit and checking it",
+      "Writing the free-response questions that course actually uses",
+      "Recording a landscape 5-minute video that goes deeper than the short videos",
+      "Linking that video to the unit in the course doc",
+    ],
+    skills: [
+      "You know an AP course well enough to write fair questions",
+      "You will actually check every question before you mark it done",
+      "Comfort explaining a whole unit on camera for about five minutes",
+      "You can film landscape, not just a vertical phone video",
+    ],
+    learn: [
+      "How to turn a unit into questions students can practice",
+      "How a longer lesson is different from a 60-second explainer",
+      "Keeping a course doc, quizzes, and a video in one place",
+    ],
+    collaboration:
+      "This work stays in your 5 For 5 page. It does not go through the short-form content pipeline. You build the doc, check the questions, film the unit, and link the video.",
+    expectations: [
+      "One Google Doc per course",
+      "Do not mark a quiz or test checked until you have read every question",
+      "AP Human Geography units need an FRQ. AP World, APUSH, and AP Euro units need an SAQ, a DBQ, and an LEQ",
+      "The unit video is landscape and about five minutes",
+    ],
+    examples: [
+      "Open a Google Doc for AP Human Geography and add a Unit 1 tab with a topic quiz, a unit test, and an FRQ",
+      "For AP World Unit 3, write an SAQ, a DBQ, and an LEQ, then check each one",
+      "Film a landscape 5-minute walkthrough of the unit and paste the link on that tab",
+    ],
+  },
 ];
 
-export type ApplyLaneId = "one-video" | "video-taker" | "graphic-posts";
+export type ApplyLaneId = "one-video" | "video-taker" | "five-for-five" | "graphic-posts";
 
 export type ApplyLane = {
   id: ApplyLaneId;
@@ -277,6 +323,15 @@ export const APPLY_LANES: ApplyLane[] = [
     team: "VIDEO_CREATOR",
     commitment: "FULL_TIME",
     choosesVideos: true,
+  },
+  {
+    id: "five-for-five",
+    name: "5 For 5",
+    description: "Build the course Google Doc. Units, checked quizzes, a unit test, written questions, and a 5-minute landscape video.",
+    weekly: "Course docs and a 5-minute video per unit",
+    team: "FIVE_FOR_FIVE",
+    commitment: "FULL_TIME",
+    choosesVideos: false,
   },
   {
     id: "graphic-posts",
@@ -313,6 +368,7 @@ export const TEAM_KEY_TO_CHANNEL: Record<TeamKey, string> = {
   VIDEO_EDITOR: "VIDEO_EDITOR",
   SOCIAL_MEDIA: "SOCIAL_MEDIA",
   GRAPHIC_DESIGN: "GRAPHIC_DESIGN",
+  FIVE_FOR_FIVE: "FIVE_FOR_FIVE",
   SEO: "SEO",
 };
 

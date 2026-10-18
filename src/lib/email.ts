@@ -298,6 +298,53 @@ export async function sendTestEmail(to: string) {
   );
 }
 
+export async function sendOneTimeJoinRequest(
+  to: string,
+  person: {
+    name: string;
+    email: string;
+    phone: string;
+    school: string;
+    city: string;
+    grade: string;
+    apClasses: string;
+    applicationId: string;
+    applicationPath: string;
+  },
+) {
+  const reviewUrl = `${await appUrl()}${person.applicationPath}`;
+  return send(
+    to,
+    `${person.name} wants to join AP Blitz`,
+    wrap(
+      "They want to join the team",
+      `<p>${escapeHtml(person.name)} made the one-time video and wants to actually join AP Blitz.</p>
+       <p><strong>Email:</strong> ${escapeHtml(person.email)}<br/>
+       <strong>Phone:</strong> ${escapeHtml(person.phone)}<br/>
+       <strong>Grade:</strong> ${escapeHtml(person.grade)}<br/>
+       <strong>School:</strong> ${escapeHtml(person.school)}<br/>
+       <strong>City:</strong> ${escapeHtml(person.city)}</p>
+       <p><strong>AP classes</strong><br/>${escapeHtml(person.apClasses).replaceAll("\n", "<br/>")}</p>
+       <p>Application ${escapeHtml(person.applicationId)}. Pick their team, then tell them to refresh.</p>
+       ${ctaButton(reviewUrl, "Pick their team")}`,
+    ),
+  );
+}
+
+export async function sendPlacedOnTeam(to: string, name: string, role: string) {
+  const workspace = `${await appUrl()}/workspace`;
+  return send(
+    to,
+    "You're on the AP Blitz team",
+    wrap(
+      "Refresh and you're in",
+      `<p>Hey ${escapeHtml(name)},</p>
+       <p>Kesav put you on <strong>${escapeHtml(role)}</strong>. Refresh AP Blitz and the team workspace will be there.</p>
+       ${ctaButton(workspace, "Open the workspace")}`,
+    ),
+  );
+}
+
 export async function sendNewDeviceAlert(
   to: string,
   details: { account: string; role: string; ip: string; userAgent: string },

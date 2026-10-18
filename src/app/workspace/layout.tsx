@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAdmin, requireUser } from "@/lib/auth";
-import { isOneTimeMember, oneTimePathAllowed } from "@/lib/one-time";
+import { isEducationalVideoTaker, isOneTimeMember, isPromotionalMember, oneTimePathAllowed } from "@/lib/one-time";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
 import { canAccessChannel } from "@/lib/rbac";
@@ -16,9 +16,16 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (user.role === "BLITZER") redirect("/student/dashboard");
-  const oneTime = await isOneTimeMember(user.id, user.role);
+  const [oneTime, promotional, educational] = await Promise.all([
+    isOneTimeMember(user.id, user.role),
+    isPromotionalMember(user.id, user.role),
+    isEducationalVideoTaker(user.id, user.role),
+  ]);
   const pathname = (await headers()).get("x-pathname") || "";
   if (oneTime && pathname.startsWith("/workspace") && !oneTimePathAllowed(pathname)) {
+    redirect("/workspace/about");
+  }
+  if (promotional && pathname.startsWith("/workspace/pipeline")) {
     redirect("/workspace/trends");
   }
   const channels = await prisma.messageChannel.findMany({
@@ -42,11 +49,16 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   ]);
 
   const items: NavItem[] = [];
+  const recordGuide = !oneTime && !promotional && (user.role === "FOUNDER" || educational || user.teams.some((team) => team.key === "VIDEO_CREATOR"));
+  const promoGuide = !oneTime && (user.role === "FOUNDER" || promotional);
+  const five = !oneTime && (isAdmin(user) || user.teams.some((team) => team.key === "FIVE_FOR_FIVE"));
   if (oneTime) {
     items.push(
-      { href: "/workspace/trends", label: "Video ideas", icon: "📈" },
-      { href: "/workspace/kesav", label: "Message Kesav", icon: "💬" },
-      { href: "/workspace/commitment", label: "Commitment", icon: "✅" },
+      { href: "/workspace/about", label: "What AP Blitz is", icon: "⚡" },
+      { href: "/workspace/one-video", label: "Step 1", icon: "1️⃣" },
+      { href: "/workspace/trends", label: "Step 2 · Pick", icon: "📈" },
+      { href: "/workspace/send", label: "Step 3 · Send", icon: "📤" },
+      { href: "/workspace/commitment", label: "Step 4 · After", icon: "✅" },
     );
   } else {
   if (isAdmin(user)) {
@@ -57,10 +69,17 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     { href: "/workspace/messages", label: "Messages", icon: "💬", badge: unreadMessages || undefined },
     { href: "/workspace/tasks", label: "My Tasks", icon: "✅" },
     { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
-    { href: "/workspace/pipeline", label: "Content Pipeline", icon: "🎬" },
+  );
+  if (!promotional) {
+    items.push({ href: "/workspace/pipeline", label: "Content Pipeline", icon: "🎬" });
+  }
+  items.push(
     { href: "/workspace/videos", label: "Videos", icon: "▶️" },
     { href: "/workspace/trends", label: "Trends", icon: "📈" },
   );
+  if (recordGuide) items.push({ href: "/workspace/how-to-record", label: "How to record", icon: "🎥" });
+  if (promoGuide) items.push({ href: "/workspace/promo-guide", label: "How to record and edit", icon: "🎞️" });
+  if (five) items.push({ href: "/workspace/five", label: "5 For 5", icon: "📚" });
   if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
     items.push({ href: "/admin/applications", label: "Applications", icon: "📥" });
   }
@@ -79,6 +98,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   const roleLabel = oneTime
     ? "One video"
+    : promotional
+      ? "Promotional videos"
+      : educational
+        ? "Educational videos"
     :
     user.role === "FOUNDER"
       ? "Founder"

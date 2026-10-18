@@ -14,6 +14,10 @@ export default async function ApplicationsPage({
 }) {
   await requireAdmin();
   const { status } = await searchParams;
+  const joiners = await prisma.application.findMany({
+    where: { commitment: "ONE_TIME", status: "ACCEPTED", joinRequestedAt: { not: null } },
+    orderBy: { joinRequestedAt: "desc" },
+  });
   const apps = await prisma.application.findMany({
     where: status ? { status: status as ApplicationStatus } : undefined,
     orderBy: { submittedAt: "desc" },
@@ -36,6 +40,15 @@ export default async function ApplicationsPage({
           </Link>
         ))}
       </div>
+      {joiners.length ? (
+        <div className="mt-6 space-y-2">
+          {joiners.map((joiner) => (
+            <Link key={joiner.id} href={`/admin/applications/${joiner.id}`} className="block rounded-2xl border border-volt/40 bg-volt/10 px-4 py-3 text-sm">
+              {joiner.firstName} {joiner.lastName} wants to join the team. Pick their team.
+            </Link>
+          ))}
+        </div>
+      ) : null}
       <div className="mt-6 overflow-x-auto rounded-3xl border border-white/10">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-navy text-paper/60">
@@ -67,7 +80,15 @@ export default async function ApplicationsPage({
                 </td>
                 <td className="px-4 py-3">{GRADE_LABELS[a.gradeLevel]}</td>
                 <td className="px-4 py-3">{a.highSchool}</td>
-                <td className="px-4 py-3">{getRoleByKey(a.firstChoice)?.name}</td>
+                <td className="px-4 py-3">
+                  {a.commitment === "ONE_TIME"
+                    ? "One video"
+                    : a.videoLane === "PROMOTIONAL"
+                      ? "Promotional videos"
+                      : a.videoLane === "EDUCATIONAL"
+                        ? "Educational videos"
+                        : getRoleByKey(a.firstChoice)?.name}
+                </td>
                 <td className="px-4 py-3">{a.status.replace("_", " ")}</td>
                 <td className="px-4 py-3">{formatDateTime(a.submittedAt)}</td>
               </tr>

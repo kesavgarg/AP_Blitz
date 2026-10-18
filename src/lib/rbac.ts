@@ -8,6 +8,7 @@ const CHANNEL_TEAM: Partial<Record<string, TeamKey>> = {
   VIDEO_EDITOR: "VIDEO_EDITOR",
   SOCIAL_MEDIA: "SOCIAL_MEDIA",
   GRAPHIC_DESIGN: "GRAPHIC_DESIGN",
+  FIVE_FOR_FIVE: "FIVE_FOR_FIVE",
 };
 
 export type ChannelAccess = {
@@ -104,6 +105,8 @@ export function workspaceForTeam(key: TeamKey) {
       return "/workspace/design";
     case "SOCIAL_MEDIA":
       return "/workspace/social";
+    case "FIVE_FOR_FIVE":
+      return "/workspace/five";
     default:
       return "/workspace";
   }

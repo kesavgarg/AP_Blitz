@@ -31,6 +31,11 @@ const TEAMS: { key: TeamKey; name: string; description: string }[] = [
     name: "Graphic Design",
     description: "Posts, infographics, thumbnails, and brand visuals.",
   },
+  {
+    key: "FIVE_FOR_FIVE",
+    name: "5 For 5",
+    description: "Course docs, unit quizzes, tests, written questions, and 5-minute landscape videos.",
+  },
 ];
 
 async function main() {
@@ -66,6 +71,7 @@ async function main() {
     { key: "VIDEO_EDITOR", name: "Video Editors", teamKey: "VIDEO_EDITOR", isPrivate: true },
     { key: "SOCIAL_MEDIA", name: "Social Media", teamKey: "SOCIAL_MEDIA", isPrivate: true },
     { key: "GRAPHIC_DESIGN", name: "Graphic Design", teamKey: "GRAPHIC_DESIGN", isPrivate: true },
+    { key: "FIVE_FOR_FIVE", name: "5 For 5", teamKey: "FIVE_FOR_FIVE", isPrivate: true },
   ];
 
   for (const ch of channels) {

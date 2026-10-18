@@ -74,6 +74,7 @@ export default async function TasksPage() {
                 <option value="VIDEO_EDITOR">Edit</option>
                 <option value="SOCIAL_MEDIA">Social</option>
                 <option value="GRAPHIC_DESIGN">Design</option>
+                <option value="FIVE_FOR_FIVE">5 For 5</option>
               </select>
               <input name="deadline" type="datetime-local" className="w-full rounded-xl border px-3 py-2" />
               <button className="rounded-full bg-ink px-4 py-2 text-paper">Create task</button>

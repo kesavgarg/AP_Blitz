@@ -18,7 +18,7 @@ export default async function ApplyPage({
       <p className="mt-3 text-paper/70">
         {match
           ? `You're applying as ${match.name}. You can still switch before you submit.`
-          : "Pick one video, video taker, or graphic posts."}{" "}
+          : "Pick one video, video taker, 5 For 5, or graphic posts."}{" "}
         Kesav reviews every application. You cannot log in until he accepts you.
       </p>
       <div className="mt-10">

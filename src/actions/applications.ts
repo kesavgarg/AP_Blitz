@@ -57,7 +57,7 @@ export async function submitApplication(
 
   const data = parsed.data;
   const lane = getApplyLane(data.lane);
-  if (!lane) return { error: "Pick one of the three roles." };
+  if (!lane) return { error: "Pick a role." };
   if (data.keepSiteOpen !== "YES" || data.canBeRemoved !== "YES" || data.weeklyDeadline !== "YES") {
     return { error: "You have to agree to all three of those to apply." };
   }
@@ -140,7 +140,9 @@ export async function submitApplication(
       await notify({
         userId: founder.id,
         title: "New application",
-        body: `${data.firstName} ${data.lastName} applied (${applicationId}). Open Applications to accept or decline.`,
+        body: lane.commitment === "ONE_TIME"
+          ? `${data.firstName} ${data.lastName} sent a photo and wants to film one video (${applicationId}). Accept or decline them.`
+          : `${data.firstName} ${data.lastName} applied for ${lane.name} (${applicationId}). Open Applications to accept or decline.`,
         href: `/admin/applications/${created.id}`,
       });
     }

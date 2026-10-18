@@ -20,6 +20,7 @@ enum TeamKey {
   VIDEO_EDITOR
   SOCIAL_MEDIA
   GRAPHIC_DESIGN
+  FIVE_FOR_FIVE
   SEO
 }
 
@@ -133,6 +134,7 @@ enum ChannelKey {
   VIDEO_EDITOR
   SOCIAL_MEDIA
   GRAPHIC_DESIGN
+  FIVE_FOR_FIVE
   SEO
   ADMIN
 }
@@ -203,6 +205,7 @@ model User {
   videoEvents        VideoEvent[]
   createdTrends      TrendLink[]              @relation("TrendAuthor")
   claimedTrends      TrendLink[]              @relation("TrendClaim")
+  courseDocs         CourseDoc[]
 }
 
 model Session {
@@ -278,6 +281,7 @@ model Application {
   photoUrl         String  @default("")
   commitment       String  @default("")
   videoLane        String  @default("")
+  joinRequestedAt  DateTime?
   status           ApplicationStatus @default(NEW)
   adminNotes       String?
   rejectReason     String?
@@ -305,6 +309,8 @@ model OrgSettings {
   defaultMeetingLink String @default("")
   brandTagline       String @default("Student-run AP content, built for students.")
   instagramUrl       String @default("")
+  howToRecordFileId  String @default("")
+  promoGuideFileId   String @default("")
   stagesBackfilled   Boolean @default(false)
   smtpHost           String @default("")
   smtpPort           String @default("587")
@@ -647,6 +653,7 @@ model TrendLink {
   createdBy   User     @relation("TrendAuthor", fields: [createdById], references: [id])
   claimedById String?
   claimedBy   User?    @relation("TrendClaim", fields: [claimedById], references: [id])
+  completedAt DateTime?
   createdAt   DateTime @default(now())
 }
 
@@ -852,6 +859,59 @@ model EmailVerification {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+model CourseDoc {
+  id          String   @id @default(cuid())
+  subjectSlug String
+  title       String
+  docUrl      String
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  units       CourseUnit[]
+
+  @@index([ownerId])
+}
+
+model CourseUnit {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      CourseDoc      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  sortOrder   Int            @default(0)
+  testBody    String         @default("") @db.Text
+  testChecked Boolean        @default(false)
+  videoUrl    String         @default("")
+  createdAt   DateTime       @default(now())
+  topics      CourseTopic[]
+  prompts     CoursePrompt[]
+
+  @@index([courseId, sortOrder])
+}
+
+model CourseTopic {
+  id        String     @id @default(cuid())
+  unitId    String
+  unit      CourseUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  title     String
+  quizBody  String     @default("") @db.Text
+  checked   Boolean    @default(false)
+  sortOrder Int        @default(0)
+
+  @@index([unitId, sortOrder])
+}
+
+model CoursePrompt {
+  id      String     @id @default(cuid())
+  unitId  String
+  unit    CourseUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  kind    String
+  body    String     @default("") @db.Text
+  checked Boolean    @default(false)
+
+  @@unique([unitId, kind])
 }
 
 model VideoEvent {

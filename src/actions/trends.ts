@@ -53,6 +53,18 @@ export async function updateTrendDescription(formData: FormData) {
   refresh();
 }
 
+export async function completeTrendLink(formData: FormData) {
+  const user = await requireTeam();
+  if (await isOneTimeMember(user.id, user.role)) return;
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.trendLink.updateMany({
+    where: { id, claimedById: user.id, completedAt: null },
+    data: { completedAt: new Date() },
+  });
+  refresh();
+}
+
 export async function deleteTrendLink(formData: FormData) {
   const user = await requireTeam();
   if (!isAdmin(user)) return;

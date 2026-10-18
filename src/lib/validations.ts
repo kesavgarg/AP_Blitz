@@ -7,6 +7,7 @@ export const teamKeyEnum = z.enum([
   "VIDEO_EDITOR",
   "SOCIAL_MEDIA",
   "GRAPHIC_DESIGN",
+  "FIVE_FOR_FIVE",
 ]);
 export const yesNo = z.enum(["YES", "NO"]);
 
@@ -19,7 +20,7 @@ export const applicationSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(160),
   phone: z.string().trim().min(7, "Enter a valid phone number").max(40),
   apClasses: z.string().trim().min(2, "List your AP classes").max(4000),
-  lane: z.enum(["one-video", "video-taker", "graphic-posts"]),
+  lane: z.enum(["one-video", "video-taker", "five-for-five", "graphic-posts"]),
   videoLane: z.enum(["EDUCATIONAL", "PROMOTIONAL"]).optional().or(z.literal("")),
   experience: z.string().trim().max(4000).optional().or(z.literal("")),
   keepSiteOpen: yesNo,

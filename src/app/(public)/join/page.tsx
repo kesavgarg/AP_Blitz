@@ -11,9 +11,9 @@ export default function JoinPage() {
         Pick a lane. Show up. Ship AP content.
       </h1>
       <p className="mt-4 max-w-2xl text-paper/70">
-        Three ways to start. One video is a single video. Video taker is every week. Graphic posts is the design work.
+        One video is a single video that gets posted. Video taker is every week, either educational or promotional. 5 For 5 builds the course docs. Graphic posts is the design work.
       </p>
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
+      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {APPLY_LANES.map((lane) => (
           <Link
             key={lane.id}

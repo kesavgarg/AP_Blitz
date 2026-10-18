@@ -6,8 +6,9 @@ import { ApplicationStatus, PermissionRole, TeamKey } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireFounder, hashPassword, revokeUserSessions } from "@/lib/auth";
 import { logActivity, notify } from "@/lib/activity";
-import { appUrl, sendAcceptance, sendBlitzerPromoted, sendRejection, sendTestEmail } from "@/lib/email";
+import { appUrl, sendAcceptance, sendBlitzerPromoted, sendPlacedOnTeam, sendRejection, sendTestEmail } from "@/lib/email";
 import { getRoleByKey, isActiveTeamKey } from "@/lib/roles";
+import { ensureFiveForFive } from "@/lib/teams";
 import { getOrgSettings } from "@/lib/settings";
 import { cleanInstagramUrl } from "@/lib/videos";
 import { generateTempPassword } from "@/lib/flash";
@@ -71,6 +72,7 @@ export async function acceptApplication(formData: FormData) {
 
   const app = await prisma.application.findUnique({ where: { id } });
   if (!app) return;
+  if (selected.includes("FIVE_FOR_FIVE")) await ensureFiveForFive();
 
   const teams = await prisma.team.findMany({ where: { key: { in: selected } } });
   if (!teams.length) return;
@@ -139,7 +141,7 @@ export async function acceptApplication(formData: FormData) {
   const setupUrl = `${site}/setup-account?token=${inviteToken}`;
   const loginUrl = `${site}/login?email=${encodeURIComponent(email)}`;
   const oneTimeNote = app.commitment === "ONE_TIME"
-    ? "<p>Log in after you choose a password. You will see video ideas, a page to message Kesav, and a way to apply again as a full-time member.</p>"
+    ? "<p>Log in after you choose a password. You'll see what AP Blitz is, pick one video that will be posted, then send that video to Kesav.</p>"
     : "";
   const mail = keepBlitzerPassword
     ? await sendBlitzerPromoted(email, app.firstName, roleName, loginUrl)
@@ -162,9 +164,9 @@ export async function acceptApplication(formData: FormData) {
     userId: userId!,
     title: "Welcome to AP Blitz",
     body: app.commitment === "ONE_TIME"
-      ? "You're accepted. Log in and pick one video idea."
+      ? "You're accepted. Log in, see what AP Blitz is, then pick the video that will be posted."
       : `You're accepted as a ${roleName}. Log in to open the workspace.`,
-    href: app.commitment === "ONE_TIME" ? "/workspace/trends" : "/workspace",
+    href: app.commitment === "ONE_TIME" ? "/workspace/about" : "/workspace",
   });
   await logActivity({
     userId: admin.id,
@@ -200,11 +202,61 @@ export async function updateMemberRole(formData: FormData) {
   revalidatePath("/admin/sessions");
 }
 
+export async function placeOneTimeMember(formData: FormData) {
+  const admin = await requireAdmin();
+  const id = String(formData.get("id") || "");
+  const roles = formData
+    .getAll("roles")
+    .map((value) => String(value))
+    .filter(Boolean) as TeamKey[];
+  const selected = roles.filter(isActiveTeamKey);
+  if (!id || !selected.length) return;
+  const app = await prisma.application.findUnique({ where: { id } });
+  if (!app?.acceptedUserId || app.commitment !== "ONE_TIME" || app.status !== "ACCEPTED") return;
+  if (selected.includes("FIVE_FOR_FIVE")) await ensureFiveForFive();
+  const teams = await prisma.team.findMany({ where: { key: { in: selected } } });
+  if (!teams.length) return;
+  const userId = app.acceptedUserId;
+  await prisma.teamMembership.deleteMany({
+    where: { userId, teamId: { notIn: teams.map((team) => team.id) } },
+  });
+  for (const team of teams) {
+    await prisma.teamMembership.upsert({
+      where: { userId_teamId: { userId, teamId: team.id } },
+      update: {},
+      create: { userId, teamId: team.id },
+    });
+  }
+  await prisma.application.update({
+    where: { id },
+    data: { commitment: "FULL_TIME", assignedRole: selected[0], videoLane: "" },
+  });
+  const roleName = selected.map((role) => getRoleByKey(role)?.name ?? role).join(", ");
+  await sendPlacedOnTeam(app.email, app.firstName, roleName);
+  await notify({
+    userId,
+    title: "You're on the team",
+    body: `Kesav put you on ${roleName}. Refresh and the workspace will open.`,
+    href: "/workspace",
+  });
+  await logActivity({
+    userId: admin.id,
+    action: `${admin.firstName} moved ${app.firstName} ${app.lastName} from one video onto ${roleName}`,
+    objectType: "Application",
+    objectId: app.applicationId,
+  });
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${id}`);
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace");
+}
+
 export async function addMemberToTeam(formData: FormData) {
   await requireFounder();
   const userId = String(formData.get("userId") || "");
   const teamKey = String(formData.get("teamKey") || "") as TeamKey;
   if (!isActiveTeamKey(teamKey)) return;
+  if (teamKey === "FIVE_FOR_FIVE") await ensureFiveForFive();
   const team = await prisma.team.findUnique({ where: { key: teamKey } });
   if (!userId || !team) return;
   await prisma.teamMembership.upsert({
@@ -235,7 +287,8 @@ async function deleteMemberAccount(founderId: string, founderName: string, userI
     await tx.task.updateMany({ where: { creatorId: userId }, data: { creatorId: founderId } });
     await tx.meeting.updateMany({ where: { hostId: userId }, data: { hostId: founderId } });
     await tx.trendLink.updateMany({ where: { createdById: userId }, data: { createdById: founderId } });
-    await tx.trendLink.updateMany({ where: { claimedById: userId }, data: { claimedById: null } });
+    await tx.trendLink.updateMany({ where: { claimedById: userId }, data: { claimedById: null, completedAt: null } });
+    await tx.courseDoc.deleteMany({ where: { ownerId: userId } });
     await tx.announcement.updateMany({ where: { authorId: userId }, data: { authorId: founderId } });
     await tx.contentItem.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
     await tx.contentItem.updateMany({ where: { completedById: userId }, data: { completedById: null } });

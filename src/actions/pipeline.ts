@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin, requireTeam } from "@/lib/auth";
 import { logActivity, nextContentId } from "@/lib/activity";
 import { isWorkStage } from "@/lib/stages";
+import { isPromotionalMember } from "@/lib/one-time";
 
 function refresh() {
   revalidatePath("/workspace/pipeline");
@@ -16,6 +17,7 @@ function refresh() {
 export async function createPipelineItem(formData: FormData) {
   const user = await requireTeam();
   if (user.role === "BLITZER") return;
+  if (await isPromotionalMember(user.id, user.role)) return;
   const title = String(formData.get("title") || "").trim();
   if (!title) return;
   const deadlineRaw = String(formData.get("deadline") || "");

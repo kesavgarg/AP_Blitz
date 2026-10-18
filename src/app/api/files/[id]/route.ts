@@ -29,10 +29,16 @@ export async function GET(
   const avatarOwner = allowed
     ? null
     : await prisma.user.findFirst({ where: { imageUrl: `/api/files/${id}` }, select: { id: true } });
-  if (!allowed && !avatarOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const guide = allowed || avatarOwner
+    ? null
+    : await prisma.orgSettings.findFirst({
+        where: { id: "org", OR: [{ howToRecordFileId: id }, { promoGuideFileId: id }] },
+        select: { id: true },
+      });
+  if (!allowed && !avatarOwner && !guide) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const filename = file.filename.replace(/[\r\n"]/g, "").slice(0, 180) || "file";
-  const inline = file.mimeType.startsWith("image/");
+  const inline = file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/");
   const headers = {
     "Content-Type": file.mimeType,
     "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,

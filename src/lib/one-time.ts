@@ -1,19 +1,41 @@
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["/workspace/trends", "/workspace/kesav", "/workspace/commitment"];
+export { oneTimePathAllowed } from "@/lib/one-time-paths";
+
+/** Latest accepted application for a regular member. Founders, admins, and Blitzers are not gated. */
+export async function getMemberLane(userId: string, role?: string) {
+  if (role === "FOUNDER" || role === "TEAM_ADMIN" || role === "BLITZER") return null;
+  return prisma.application.findFirst({
+    where: { acceptedUserId: userId, status: "ACCEPTED" },
+    orderBy: { reviewedAt: "desc" },
+    select: {
+      id: true,
+      commitment: true,
+      videoLane: true,
+      reviewedAt: true,
+      joinRequestedAt: true,
+    },
+  });
+}
 
 /** Latest accepted application is the one-video lane, and they are still a regular member. */
 export async function isOneTimeMember(userId: string, role?: string) {
-  if (role === "FOUNDER" || role === "TEAM_ADMIN" || role === "BLITZER") return false;
-  const latest = await prisma.application.findFirst({
-    where: { acceptedUserId: userId, status: "ACCEPTED" },
-    orderBy: { reviewedAt: "desc" },
-    select: { commitment: true, reviewedAt: true },
-  });
+  const latest = await getMemberLane(userId, role);
   if (!latest || latest.commitment !== "ONE_TIME") return null;
-  return { acceptedAt: latest.reviewedAt ?? new Date() };
+  return {
+    acceptedAt: latest.reviewedAt ?? new Date(),
+    joinRequestedAt: latest.joinRequestedAt,
+    applicationId: latest.id,
+  };
 }
 
-export function oneTimePathAllowed(pathname: string) {
-  return ALLOWED.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+export async function isPromotionalMember(userId: string, role?: string) {
+  const latest = await getMemberLane(userId, role);
+  return Boolean(latest && latest.commitment !== "ONE_TIME" && latest.videoLane === "PROMOTIONAL");
+}
+
+export async function isEducationalVideoTaker(userId: string, role?: string) {
+  const latest = await getMemberLane(userId, role);
+  if (!latest || latest.commitment === "ONE_TIME" || latest.videoLane === "PROMOTIONAL") return false;
+  return latest.videoLane === "EDUCATIONAL";
 }
