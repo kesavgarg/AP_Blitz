@@ -8,6 +8,7 @@ import { isFounder, leadsTeam, onTeam, requireTeam } from "@/lib/auth";
 import { logActivity, nextContentId, notify } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 import { sendAssignment } from "@/lib/email";
+import { isEducationalVideoTaker } from "@/lib/one-time";
 
 function isNextRedirect(err: unknown) {
   return (
@@ -140,8 +141,8 @@ export async function saveScript(formData: FormData) {
       if (!script) {
         redirect(scriptPath({ error: "That script is gone.", subject: apSubject ?? undefined }));
       }
-      if (script.authorId !== user.id && !isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) {
-        redirect(scriptPath({ id, subject: apSubject ?? undefined, error: "You cannot edit this script." }));
+      if (!isFounder(user)) {
+        redirect(scriptPath({ id, subject: apSubject ?? undefined, error: "Only Kesav can edit scripts." }));
       }
       const status: ScriptStatus = submit ? "SUBMITTED" : script.status === "DRAFT" ? "DRAFT" : script.status;
       await prisma.script.update({
@@ -178,8 +179,8 @@ export async function saveScript(formData: FormData) {
       redirect(scriptPath({ id, subject: apSubject ?? undefined }));
     }
 
-    if (!onTeam(user, "SCRIPT_WRITER") && !isFounder(user)) {
-      redirect(scriptPath({ error: "You need the Script Writer role to create scripts." }));
+    if (!isFounder(user)) {
+      redirect(scriptPath({ error: "Only Kesav can create scripts." }));
     }
     const contentId = await nextContentId();
     const team = await prisma.team.findUnique({ where: { key: "SCRIPT_WRITER" } });
@@ -234,8 +235,8 @@ export async function deleteScript(formData: FormData) {
     if (!script) {
       redirect(scriptPath({ error: "That script is already gone." }));
     }
-    if (script.authorId !== user.id && !isFounder(user) && !leadsTeam(user, "SCRIPT_WRITER")) {
-      redirect(scriptPath({ id, subject: script.apSubject ?? undefined, error: "You cannot delete this script." }));
+    if (!isFounder(user)) {
+      redirect(scriptPath({ id, subject: script.apSubject ?? undefined, error: "Only Kesav can delete scripts." }));
     }
     const subject = script.apSubject ?? "";
     await prisma.script.delete({ where: { id } });
@@ -256,6 +257,62 @@ export async function deleteScript(formData: FormData) {
     console.error("[deleteScript]", err);
     redirect(scriptPath({ id, error: err instanceof Error ? err.message : "Could not delete that script." }));
   }
+}
+
+export async function publishScript(formData: FormData) {
+  const user = await requireTeam();
+  if (!isFounder(user)) return;
+  const id = String(formData.get("id") || "");
+  const script = await prisma.script.findUnique({
+    where: { id },
+    include: { contentItem: { include: { video: true } } },
+  });
+  if (!script || script.contentItem.video?.creatorId) return;
+  await prisma.script.update({ where: { id }, data: { status: "APPROVED", submittedAt: script.submittedAt ?? new Date() } });
+  await prisma.contentItem.update({
+    where: { id: script.contentItemId },
+    data: { status: "SCRIPT_APPROVED" },
+  });
+  await history(script.contentItemId, user.id, "Published script", script.contentItem.status, "SCRIPT_APPROVED");
+  revalidatePath("/workspace/scripts");
+  revalidatePath("/workspace/open-scripts");
+  redirect(scriptPath({ id, subject: script.apSubject ?? undefined }));
+}
+
+export async function acceptPublishedScript(formData: FormData) {
+  const user = await requireTeam();
+  if (!(await isEducationalVideoTaker(user.id, user.role))) return;
+  const id = String(formData.get("id") || "");
+  const script = await prisma.script.findUnique({
+    where: { id },
+    include: { contentItem: { include: { video: true } } },
+  });
+  if (!script || script.status !== "APPROVED" || script.contentItem.video?.creatorId) return;
+  const claimed = await prisma.script.updateMany({
+    where: { id, status: "APPROVED" },
+    data: { status: "ASSIGNED" },
+  });
+  if (claimed.count !== 1) return;
+  const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await prisma.contentItem.update({
+    where: { id: script.contentItemId },
+    data: { status: "VIDEO_ASSIGNED", ownerId: user.id, deadline },
+  });
+  await prisma.video.upsert({
+    where: { contentItemId: script.contentItemId },
+    update: { creatorId: user.id, creatorStatus: "accepted", assignedAt: new Date() },
+    create: {
+      contentItemId: script.contentItemId,
+      creatorId: user.id,
+      creatorStatus: "accepted",
+      assignedAt: new Date(),
+    },
+  });
+  await history(script.contentItemId, user.id, "Accepted published script", "SCRIPT_APPROVED", "VIDEO_ASSIGNED");
+  revalidatePath("/workspace/open-scripts");
+  revalidatePath("/workspace/accepted");
+  revalidatePath("/workspace/scripts");
+  redirect("/workspace/accepted");
 }
 
 export async function reviewScript(formData: FormData) {

@@ -22,8 +22,28 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     isEducationalVideoTaker(user.id, user.role),
   ]);
   const pathname = (await headers()).get("x-pathname") || "";
+  const guideSeen = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { educationalGuideSeenAt: true, promoGuideSeenAt: true },
+  });
   if (oneTime && pathname.startsWith("/workspace") && !oneTimePathAllowed(pathname)) {
     redirect("/workspace/about");
+  }
+  if (
+    pathname &&
+    educational &&
+    !guideSeen?.educationalGuideSeenAt &&
+    !pathname.startsWith("/workspace/how-to-record")
+  ) {
+    redirect("/workspace/how-to-record");
+  }
+  if (
+    pathname &&
+    promotional &&
+    !guideSeen?.promoGuideSeenAt &&
+    !pathname.startsWith("/workspace/promo-guide")
+  ) {
+    redirect("/workspace/promo-guide");
   }
   if (promotional && pathname.startsWith("/workspace/pipeline")) {
     redirect("/workspace/trends");
@@ -49,9 +69,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   ]);
 
   const items: NavItem[] = [];
-  const recordGuide = !oneTime && !promotional && (user.role === "FOUNDER" || educational || user.teams.some((team) => team.key === "VIDEO_CREATOR"));
-  const promoGuide = !oneTime && (user.role === "FOUNDER" || promotional);
-  const five = !oneTime && (isAdmin(user) || user.teams.some((team) => team.key === "FIVE_FOR_FIVE"));
+  const founder = user.role === "FOUNDER";
+  const recordGuide = !oneTime && educational;
+  const promoGuide = !oneTime && promotional;
+  const five = !oneTime && !founder && user.teams.some((team) => team.key === "FIVE_FOR_FIVE");
   if (oneTime) {
     items.push(
       { href: "/workspace/about", label: "What AP Blitz is", icon: "⚡" },
@@ -79,21 +100,27 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   );
   if (recordGuide) items.push({ href: "/workspace/how-to-record", label: "How to record", icon: "🎥" });
   if (promoGuide) items.push({ href: "/workspace/promo-guide", label: "How to record and edit", icon: "🎞️" });
+  if (founder) items.push({ href: "/workspace/scripts", label: "Scripts", icon: "✍️" });
+  if (educational) {
+    items.push({ href: "/workspace/open-scripts", label: "Scripts", icon: "✍️" });
+    items.push({ href: "/workspace/accepted", label: "Accepted", icon: "📌" });
+  }
   if (five) items.push({ href: "/workspace/five", label: "5 For 5", icon: "📚" });
-  if (user.role === "FOUNDER" || user.role === "TEAM_ADMIN") {
+  if (!founder && user.role === "TEAM_ADMIN") {
     items.push({ href: "/admin/applications", label: "Applications", icon: "📥" });
   }
   items.push(
     { href: "/workspace/completed", label: "Completed Work", icon: "📦" },
     { href: "/workspace/daily-log", label: "Daily Logs", icon: "📝" },
     { href: "/workspace/meetings", label: "Meetings", icon: "🗓️" },
-    { href: "/workspace/announcements", label: "Announcements", icon: "📣" },
+  );
+  if (!founder) {
+    items.push({ href: "/workspace/announcements", label: "Announcements", icon: "📣" });
+  }
+  items.push(
     { href: "/workspace/notifications", label: unread ? `Alerts (${unread})` : "Notifications", icon: "🔔", badge: unread || undefined },
     { href: "/workspace/profile", label: "Profile", icon: "🙂" },
   );
-  if (user.role === "FOUNDER") {
-    items.push({ href: "/admin/settings", label: "Settings", icon: "⚙️" });
-  }
   }
 
   const roleLabel = oneTime

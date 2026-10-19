@@ -1,9 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireFounder } from "@/lib/auth";
+import { requireFounder, requireTeam } from "@/lib/auth";
 import { saveUpload } from "@/lib/files";
+
+export async function dismissGuide(formData: FormData) {
+  const user = await requireTeam();
+  const which = String(formData.get("which") || "");
+  if (which !== "educational" && which !== "promo") return;
+  await prisma.user.update({
+    where: { id: user.id },
+    data: which === "educational" ? { educationalGuideSeenAt: new Date() } : { promoGuideSeenAt: new Date() },
+  });
+  revalidatePath("/workspace");
+  revalidatePath(which === "educational" ? "/workspace/how-to-record" : "/workspace/promo-guide");
+  redirect("/workspace");
+}
 
 export async function uploadGuideVideo(formData: FormData) {
   const user = await requireFounder();

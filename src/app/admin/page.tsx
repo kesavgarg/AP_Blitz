@@ -9,9 +9,22 @@ export const dynamic = "force-dynamic";
 export default async function AdminHome() {
   const user = await requireAdmin();
   const now = new Date();
-  const [members, pendingApps, recentApps, activeTasks, overdue, meetings] =
+  const oneTimeAccepted = await prisma.application.findMany({
+    where: { commitment: "ONE_TIME", status: "ACCEPTED", acceptedUserId: { not: null } },
+    select: { acceptedUserId: true },
+  });
+  const oneTimeIds = oneTimeAccepted.map((row) => row.acceptedUserId).filter((id): id is string => Boolean(id));
+  const [members, oneTimers, blitzers, pendingApps, recentApps, activeTasks, overdue, meetings] =
     await Promise.all([
-      prisma.user.count({ where: { isActive: true, role: { not: "FOUNDER" } } }),
+      prisma.user.count({
+        where: {
+          isActive: true,
+          role: { in: ["MEMBER", "TEAM_ADMIN"] },
+          ...(oneTimeIds.length ? { id: { notIn: oneTimeIds } } : {}),
+        },
+      }),
+      prisma.user.count({ where: { isActive: true, ...(oneTimeIds.length ? { id: { in: oneTimeIds } } : { id: { in: [] } }) } }),
+      prisma.user.count({ where: { isActive: true, role: "BLITZER" } }),
       prisma.application.count({ where: { status: { in: ["NEW", "UNDER_REVIEW"] } } }),
       prisma.application.findMany({
         orderBy: { submittedAt: "desc" },
@@ -32,7 +45,9 @@ export default async function AdminHome() {
       </p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card n={pendingApps} l="Pending applications" href="/admin/applications" />
-        <Card n={members} l="Accepted team members" href="/admin/team" />
+        <Card n={members} l="Members" href="/admin/applications" />
+        <Card n={oneTimers} l="One timers" href="/admin/applications" />
+        <Card n={blitzers} l="Blitzers, not counted as members" href="/admin/applications" />
         <Card n={activeTasks} l="Open tasks" href="/workspace/tasks" />
         <Card n={overdue} l="Overdue tasks" href="/workspace/tasks" />
         <Card n={meetings} l="Upcoming meetings" href="/workspace/meetings" />

@@ -1,4 +1,4 @@
-import { TeamKey } from "@prisma/client";
+import type { TeamKey } from "@prisma/client";
 
 export type RoleSlug =
   | "video-creator"

@@ -82,32 +82,39 @@ export async function submitApplication(
   }
 
   const applicationId = await nextApplicationId();
-  const created = await prisma.application.create({
-    data: {
-      applicationId,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      gradeLevel: data.gradeLevel,
-      highSchool: data.highSchool,
-      cityCounty: data.cityCounty,
-      email: data.email.toLowerCase(),
-      phone: data.phone,
-      apClasses: data.apClasses,
-      firstChoice: lane.team,
-      secondChoice: lane.team,
-      experience: data.experience || null,
-      expectContribute: data.keepSiteOpen,
-      expectRespond: "YES",
-      expectRemoval: data.canBeRemoved,
-      expectConduct: "YES",
-      expectDeadlines: data.weeklyDeadline,
-      deadlineScenario: data.deadlineScenario,
-      additionalInfo: data.additionalInfo || null,
-      photoUrl,
-      commitment: lane.commitment,
-      videoLane: lane.choosesVideos ? String(data.videoLane) : "",
-    },
-  });
+  let created: { id: string };
+  try {
+    created = await prisma.application.create({
+      data: {
+        applicationId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        gradeLevel: data.gradeLevel,
+        highSchool: data.highSchool,
+        cityCounty: data.cityCounty,
+        email: data.email.toLowerCase(),
+        phone: data.phone,
+        apClasses: data.apClasses,
+        firstChoice: lane.team,
+        secondChoice: lane.team,
+        experience: data.experience || null,
+        expectContribute: data.keepSiteOpen,
+        expectRespond: "YES",
+        expectRemoval: data.canBeRemoved,
+        expectConduct: "YES",
+        expectDeadlines: data.weeklyDeadline,
+        deadlineScenario: data.deadlineScenario,
+        additionalInfo: data.additionalInfo || null,
+        photoUrl,
+        commitment: lane.commitment,
+        videoLane: lane.choosesVideos ? String(data.videoLane) : "",
+      },
+      select: { id: true },
+    });
+  } catch (err) {
+    console.error("[apply:create]", err);
+    return { error: "The application did not save. Try a smaller photo, then submit again." };
+  }
 
   await logActivity({
     action: `${data.firstName} ${data.lastName} submitted application ${applicationId}`,

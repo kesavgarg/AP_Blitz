@@ -165,6 +165,8 @@ model User {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   lastLoginAt  DateTime?
+  educationalGuideSeenAt DateTime?
+  promoGuideSeenAt DateTime?
 
   memberships        TeamMembership[]
   sessions           Session[]

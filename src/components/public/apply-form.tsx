@@ -7,8 +7,38 @@ import { APPLY_LANES, type ApplyLaneId } from "@/lib/roles";
 const inputClass =
   "mt-1.5 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-paper outline-none ring-volt/0 transition focus:border-volt/40 focus:ring-4 focus:ring-volt/10";
 
+async function shrinkPhoto(file: File) {
+  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+  const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
+  bitmap.close();
+  if (!blob) return file;
+  return new File([blob], "photo.jpg", { type: "image/jpeg" });
+}
+
+async function submitWithSmallPhoto(prev: ApplyState, formData: FormData): Promise<ApplyState> {
+  try {
+    const photo = formData.get("photo");
+    if (photo instanceof File && photo.size > 0) {
+      formData.set("photo", await shrinkPhoto(photo));
+    }
+    return await submitApplication(prev, formData);
+  } catch (err) {
+    console.error("[apply:form]", err);
+    return { error: "The application did not send. Use a JPG or PNG photo and try again." };
+  }
+}
+
 export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
-  const [state, action, pending] = useActionState(submitApplication, undefined as ApplyState);
+  const [state, action, pending] = useActionState(submitWithSmallPhoto, undefined as ApplyState);
   const [lane, setLane] = useState<ApplyLaneId>(defaultLane ?? "one-video");
   const chosen = APPLY_LANES.find((item) => item.id === lane);
 
