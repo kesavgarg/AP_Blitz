@@ -182,30 +182,39 @@ export async function saveScript(formData: FormData) {
     if (!isFounder(user)) {
       redirect(scriptPath({ error: "Only Kesav can create scripts." }));
     }
-    const contentId = await nextContentId();
     const team = await prisma.team.findUnique({ where: { key: "SCRIPT_WRITER" } });
-    const item = await prisma.contentItem.create({
-      data: {
-        contentId,
-        title: title || "Untitled script",
-        apSubject,
-        apUnit,
-        status: submit ? "SCRIPT_SUBMITTED" : "SCRIPT_IN_PROGRESS",
-        ownerId: user.id,
-        teamId: team?.id,
-        script: {
-          create: {
-            authorId: user.id,
+    let item: Awaited<ReturnType<typeof prisma.contentItem.create>> | null = null;
+    for (let attempt = 0; attempt < 3 && !item; attempt++) {
+      const contentId = await nextContentId();
+      try {
+        item = await prisma.contentItem.create({
+          data: {
+            contentId,
             title: title || "Untitled script",
-            body,
             apSubject,
             apUnit,
-            status: submit ? "SUBMITTED" : "DRAFT",
-            submittedAt: submit ? new Date() : null,
+            status: submit ? "SCRIPT_SUBMITTED" : "SCRIPT_IN_PROGRESS",
+            ownerId: user.id,
+            teamId: team?.id,
+            script: {
+              create: {
+                authorId: user.id,
+                title: title || "Untitled script",
+                body,
+                apSubject,
+                apUnit,
+                status: submit ? "SUBMITTED" : "DRAFT",
+                submittedAt: submit ? new Date() : null,
+              },
+            },
           },
-        },
-      },
-    });
+        });
+      } catch (err) {
+        const unique = typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2002";
+        if (!unique || attempt === 2) throw err;
+      }
+    }
+    if (!item) throw new Error("Could not save that script.");
     await history(item.id, user.id, submit ? "Created and submitted script" : "Created script draft");
     const created = await prisma.script.findUnique({ where: { contentItemId: item.id } });
     revalidatePath("/workspace/scripts");
@@ -218,7 +227,7 @@ export async function saveScript(formData: FormData) {
       scriptPath({
         id: id || undefined,
         subject: apSubject ?? undefined,
-        error: err instanceof Error ? err.message : "Could not save that script.",
+        error: "Could not save that script. Try again.",
       }),
     );
   }

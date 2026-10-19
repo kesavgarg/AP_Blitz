@@ -152,6 +152,33 @@ button:disabled,
 #workspace-root.ws-dark .border-black\/5 {
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
+.cal-day {
+  background: #f7f3eb;
+  color: #111;
+}
+.cal-day-out {
+  background: transparent;
+  opacity: 0.45;
+}
+#workspace-root.ws-dark .cal-day {
+  background: #2a2a32;
+  color: #f6f1e8;
+}
+#workspace-root.ws-dark .cal-day-out {
+  background: #141418;
+  color: rgba(246, 241, 232, 0.72);
+  opacity: 1;
+}
+#workspace-root.ws-dark .cal-day .text-ink {
+  color: #f6f1e8 !important;
+}
+#workspace-root.ws-dark input[type="date"],
+#workspace-root.ws-dark input[type="datetime-local"],
+#workspace-root.ws-dark input[type="time"] {
+  color-scheme: dark;
+  color: #f6f1e8;
+  background-color: #111114;
+}
 #workspace-root.ws-light {
   background: #f3eee4 !important;
   color: #111 !important;

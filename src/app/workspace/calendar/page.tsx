@@ -153,9 +153,9 @@ export default async function CalendarPage({
             return (
               <div
                 key={key}
-                className={`min-h-24 rounded-xl p-2 ${isSameMonth(day, cursor) ? "bg-[#f7f3eb]" : "opacity-40"}`}
+                className={`cal-day min-h-24 rounded-xl p-2 ${isSameMonth(day, cursor) ? "" : "cal-day-out"}`}
               >
-                <p className="text-xs font-semibold">{format(day, "d")}</p>
+                <p className="text-xs font-semibold text-ink">{format(day, "d")}</p>
                 {dayEvents.map((e) => (
                   <p
                     key={e.id}

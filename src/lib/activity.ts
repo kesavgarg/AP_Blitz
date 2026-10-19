@@ -113,6 +113,11 @@ export async function nextApplicationId() {
 }
 
 export async function nextContentId() {
-  const count = await prisma.contentItem.count();
-  return `C-${String(count + 1).padStart(4, "0")}`;
+  const rows = await prisma.contentItem.findMany({ select: { contentId: true } });
+  let max = 0;
+  for (const row of rows) {
+    const match = /^C-(\d+)$/.exec(row.contentId);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return `C-${String(max + 1).padStart(4, "0")}`;
 }
