@@ -140,17 +140,70 @@ button:disabled,
   background-color: #17171c !important;
   color: #f6f1e8;
 }
-#workspace-root.ws-dark .text-ink {
+#workspace-root.ws-dark .text-ink,
+#workspace-root.ws-dark .text-ink\/80,
+#workspace-root.ws-dark .text-ink\/70 {
   color: #f6f1e8 !important;
 }
 #workspace-root.ws-dark .text-ink\/60,
 #workspace-root.ws-dark .text-ink\/50,
-#workspace-root.ws-dark .text-ink\/40 {
-  color: rgba(246, 241, 232, 0.62) !important;
+#workspace-root.ws-dark .text-ink\/45,
+#workspace-root.ws-dark .text-ink\/40,
+#workspace-root.ws-dark .text-ink\/30 {
+  color: rgba(246, 241, 232, 0.72) !important;
 }
 #workspace-root.ws-dark .border-black\/10,
 #workspace-root.ws-dark .border-black\/5 {
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+#workspace-root.ws-dark .bg-black\/5,
+#workspace-root.ws-dark .bg-ink\/10,
+#workspace-root.ws-dark .hover\:bg-black\/5:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+#workspace-root.ws-dark .bg-black\/10 {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+}
+#workspace-root.ws-dark .bg-ink {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+#workspace-root.ws-dark .bg-ink.text-paper {
+  color: #f6f1e8 !important;
+}
+#workspace-root.ws-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+#workspace-root.ws-dark textarea,
+#workspace-root.ws-dark select {
+  background-color: #111114;
+  color: #f6f1e8;
+  border-color: rgba(255, 255, 255, 0.28);
+  color-scheme: dark;
+}
+#workspace-root.ws-dark input::placeholder,
+#workspace-root.ws-dark textarea::placeholder {
+  color: rgba(246, 241, 232, 0.5);
+}
+#workspace-root.ws-dark option {
+  background-color: #17171c;
+  color: #f6f1e8;
+}
+#workspace-root.ws-dark [class*="bg-[#f7f3eb]"] {
+  background-color: #2a2a32 !important;
+  color: #f6f1e8 !important;
+}
+#workspace-root.ws-dark .bg-emerald-50,
+#workspace-root.ws-dark .bg-emerald-100,
+#workspace-root.ws-dark .bg-amber-50,
+#workspace-root.ws-dark .bg-amber-100 {
+  color: #1a1a1a !important;
+}
+#workspace-root.ws-dark .text-emerald-700 {
+  color: #86efac !important;
+}
+#workspace-root.ws-dark .bg-emerald-50 .text-emerald-800,
+#workspace-root.ws-dark .bg-emerald-100 .text-emerald-900,
+#workspace-root.ws-dark .bg-amber-50 .text-amber-800,
+#workspace-root.ws-dark .bg-amber-100 .text-amber-800 {
+  color: #1a1a1a !important;
 }
 .cal-day {
   background: #f7f3eb;
