@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { applicationSchema } from "@/lib/validations";
@@ -116,49 +117,61 @@ export async function submitApplication(
     return { error: "The application did not save. Try a smaller photo, then submit again." };
   }
 
-  await logActivity({
-    action: `${data.firstName} ${data.lastName} submitted application ${applicationId}`,
-    objectType: "Application",
-    objectId: applicationId,
-  });
-
   try {
-    const settings = await getOrgSettings();
-    const received = await sendApplicationReceived(data.email, data.firstName, applicationId);
-    await sendAdminApplicationNotice(
-      settings.contactEmail || "kesavgarg@gmail.com",
-      `${data.firstName} ${data.lastName}`,
-      applicationId,
-    );
-    await prisma.application.update({
-      where: { id: created.id },
-      data: { lastEmailStatus: received.sent ? "sent" : received.error || "failed" },
+    await logActivity({
+      action: `${data.firstName} ${data.lastName} submitted application ${applicationId}`,
+      objectType: "Application",
+      objectId: applicationId,
     });
   } catch (err) {
-    console.error("[apply:email]", err);
+    console.error("[apply:log]", err);
   }
 
-  try {
-    const founder = await prisma.user.findFirst({
-      where: { role: "FOUNDER", isActive: true },
-      select: { id: true },
-    });
-    if (founder) {
-      await notify({
-        userId: founder.id,
-        title: "New application",
-        body: lane.commitment === "ONE_TIME"
-          ? `${data.firstName} ${data.lastName} sent a photo and wants to film one video (${applicationId}). Accept or decline them.`
-          : `${data.firstName} ${data.lastName} applied for ${lane.name} (${applicationId}). Open Applications to accept or decline.`,
-        href: `/admin/applications/${created.id}`,
+  const createdId = created.id;
+  const applicantName = `${data.firstName} ${data.lastName}`;
+  const applicantEmail = data.email;
+  const applicantFirst = data.firstName;
+  const noticeBody = lane.commitment === "ONE_TIME"
+    ? `${applicantName} sent a photo and wants to film one video (${applicationId}). Accept or decline them.`
+    : `${applicantName} applied for ${lane.name} (${applicationId}). Open Applications to accept or decline.`;
+
+  after(async () => {
+    try {
+      const settings = await getOrgSettings();
+      const received = await sendApplicationReceived(applicantEmail, applicantFirst, applicationId);
+      await sendAdminApplicationNotice(
+        settings.contactEmail || "kesavgarg@gmail.com",
+        applicantName,
+        applicationId,
+      );
+      await prisma.application.update({
+        where: { id: createdId },
+        data: { lastEmailStatus: received.sent ? "sent" : received.error || "failed" },
       });
+    } catch (err) {
+      console.error("[apply:email]", err);
     }
-  } catch (err) {
-    console.error("[apply:notify]", err);
-  }
+
+    try {
+      const reviewer = await prisma.user.findFirst({
+        where: { role: "FOUNDER", isActive: true },
+        select: { id: true },
+      });
+      if (reviewer) {
+        await notify({
+          userId: reviewer.id,
+          title: "New application",
+          body: noticeBody,
+          href: `/admin/applications/${createdId}`,
+        });
+      }
+    } catch (err) {
+      console.error("[apply:notify]", err);
+    }
+  });
 
   revalidatePath("/admin");
   revalidatePath("/admin/applications");
-  revalidatePath(`/admin/applications/${created.id}`);
+  revalidatePath(`/admin/applications/${createdId}`);
   redirect(`/apply/confirmation?id=${encodeURIComponent(applicationId)}`);
 }
