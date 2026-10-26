@@ -290,7 +290,7 @@ export async function publishScript(formData: FormData) {
 
 export async function acceptPublishedScript(formData: FormData) {
   const user = await requireTeam();
-  if (!(await isEducationalVideoTaker(user.id, user.role))) return;
+  if (!(await isEducationalVideoTaker(user.id, user.role, user.teams))) return;
   const id = String(formData.get("id") || "");
   const script = await prisma.script.findUnique({
     where: { id },
@@ -301,7 +301,7 @@ export async function acceptPublishedScript(formData: FormData) {
     where: { id, status: "APPROVED" },
     data: { status: "ASSIGNED" },
   });
-  if (claimed.count !== 1) return;
+  if (claimed.count !== 1) redirect("/workspace/open-scripts");
   const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await prisma.contentItem.update({
     where: { id: script.contentItemId },
@@ -318,9 +318,76 @@ export async function acceptPublishedScript(formData: FormData) {
     },
   });
   await history(script.contentItemId, user.id, "Accepted published script", "SCRIPT_APPROVED", "VIDEO_ASSIGNED");
+  try {
+    await tellFounderScriptTaken(user, script);
+  } catch (err) {
+    console.error("[acceptPublishedScript] message", err);
+  }
   revalidatePath("/workspace/open-scripts");
   revalidatePath("/workspace/accepted");
   revalidatePath("/workspace/scripts");
+  revalidatePath("/admin/alerts");
+  redirect("/workspace/accepted");
+}
+
+async function tellFounderScriptTaken(
+  user: { id: string; firstName: string },
+  script: { id: string; title: string; apSubject: string | null },
+) {
+  const founder = await prisma.user.findFirst({
+    where: { role: "FOUNDER", isActive: true },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  if (!founder || founder.id === user.id) return;
+  const slug = `dm:${[user.id, founder.id].sort().join(":")}`;
+  let channel = await prisma.messageChannel.findFirst({ where: { slug }, select: { id: true } });
+  if (!channel) {
+    channel = await prisma.messageChannel.create({
+      data: {
+        slug,
+        kind: "DM",
+        name: `${founder.firstName} ${founder.lastName}`,
+        isPrivate: true,
+        members: { create: [{ userId: user.id }, { userId: founder.id }] },
+      },
+      select: { id: true },
+    });
+  }
+  const subject = script.apSubject ? ` (${script.apSubject})` : "";
+  await prisma.message.create({
+    data: {
+      channelId: channel.id,
+      authorId: user.id,
+      body: `${user.firstName} accepted "${script.title}"${subject}. It is off everyone else's list, so nobody else can take it.`,
+    },
+  });
+  await notify({
+    userId: founder.id,
+    title: `${user.firstName} accepted a script`,
+    body: `${script.title} is off the open list.`,
+    href: `/workspace/messages/${channel.id}`,
+    dedupeKey: `script-accept:${script.id}`,
+  });
+  revalidatePath(`/workspace/messages/${channel.id}`);
+  revalidatePath("/workspace/messages");
+}
+
+export async function clearScriptForOthers(formData: FormData) {
+  const user = await requireTeam();
+  const id = String(formData.get("id") || "");
+  const script = await prisma.script.findUnique({
+    where: { id },
+    include: { contentItem: { include: { video: true } } },
+  });
+  if (!script) redirect("/workspace/accepted");
+  const ownerId = script.contentItem.video?.creatorId;
+  if (!isFounder(user) && ownerId !== user.id) redirect("/workspace/accepted");
+  if (script.status !== "ASSIGNED" && script.status !== "COMPLETED") {
+    await prisma.script.update({ where: { id }, data: { status: "ASSIGNED" } });
+  }
+  revalidatePath("/workspace/open-scripts");
+  revalidatePath("/workspace/scripts");
+  revalidatePath("/workspace/accepted");
   redirect("/workspace/accepted");
 }
 

@@ -26,9 +26,9 @@ export default async function HomePage() {
   return (
     <div>
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -left-16 top-10 h-48 w-48 rounded-full bg-[#F0A202]/30 blur-3xl floaty" />
-        <div className="pointer-events-none absolute right-0 top-24 h-56 w-56 rounded-full bg-[#6272A8]/40 blur-3xl floaty" style={{ animationDelay: "1.2s" }} />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-[#E07A6F]/30 blur-3xl floaty" style={{ animationDelay: "0.6s" }} />
+        <div className="pointer-events-none absolute -left-16 top-10 h-48 w-48 rounded-full bg-[#F0A202]/30 blur-3xl" />
+        <div className="pointer-events-none absolute right-0 top-24 h-56 w-56 rounded-full bg-[#6272A8]/40 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-[#E07A6F]/30 blur-3xl" />
         <div className="relative mx-auto max-w-6xl px-4 pb-12 pt-6 md:pb-20 md:pt-10">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-volt">Welcome to AP Blitz</p>
           <h1 className="mt-4 max-w-4xl font-display text-5xl font-semibold leading-[0.92] tracking-tight md:text-7xl">

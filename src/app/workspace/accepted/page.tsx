@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { requireTeam } from "@/lib/auth";
+import { isFounder, requireTeam } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isEducationalVideoTaker } from "@/lib/one-time";
-import { submitRawVideo } from "@/actions/content";
+import { clearScriptForOthers, submitRawVideo } from "@/actions/content";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,21 @@ function remainingLabel(deadline: Date) {
 
 export default async function AcceptedScriptsPage() {
   const user = await requireTeam();
-  if (!(await isEducationalVideoTaker(user.id, user.role))) notFound();
+  const taker = await isEducationalVideoTaker(user.id, user.role, user.teams);
+  const founder = isFounder(user);
+  if (!taker && !founder) notFound();
   const videos = await prisma.video.findMany({
-    where: { creatorId: user.id },
+    where: founder ? { creatorId: { not: null } } : { creatorId: user.id },
     include: { contentItem: { include: { script: true } } },
     orderBy: { assignedAt: "desc" },
   });
+  const creators = founder
+    ? await prisma.user.findMany({
+        where: { id: { in: videos.map((video) => video.creatorId).filter((id): id is string => Boolean(id)) } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const creatorName = new Map(creators.map((creator) => [creator.id, `${creator.firstName} ${creator.lastName}`]));
   const soonest = videos
     .map((video) => video.contentItem.deadline)
     .filter((deadline): deadline is Date => Boolean(deadline))
@@ -47,6 +56,9 @@ export default async function AcceptedScriptsPage() {
               {video.contentItem.deadline ? remainingLabel(video.contentItem.deadline) : "1 week remaining to work"}
             </p>
             <h2 className="mt-1 font-display text-2xl text-ink">{video.contentItem.title}</h2>
+            {founder && video.creatorId ? (
+              <p className="mt-1 text-sm text-ink/50">Accepted by {creatorName.get(video.creatorId) ?? "a video maker"}</p>
+            ) : null}
             <p className="mt-1 text-sm text-ink/50">
               {video.contentItem.apSubject} {video.contentItem.apUnit}
             </p>
@@ -61,6 +73,14 @@ export default async function AcceptedScriptsPage() {
               <input name="notes" placeholder="Notes" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
               <button className="rounded-full bg-ink px-4 py-2 text-sm text-paper">Upload the video</button>
             </form>
+            {video.contentItem.script ? (
+              <form action={clearScriptForOthers} className="mt-3">
+                <input type="hidden" name="id" value={video.contentItem.script.id} />
+                <button className="rounded-full border border-coral/40 px-4 py-2 text-sm text-coral">
+                  Remove from everyone&apos;s list
+                </button>
+              </form>
+            ) : null}
           </article>
         ))}
       </div>

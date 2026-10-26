@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireFounder } from "@/lib/auth";
+import { viewAsMember } from "@/actions/view-as";
 import { setTeamLeader, updateMemberRole, addMemberToTeam } from "@/actions/admin";
 import { isActiveTeamKey, ROLES } from "@/lib/roles";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -8,10 +9,10 @@ import type { PermissionRole, TeamKey } from "@prisma/client";
 
 export default async function AdminTeamPage() {
   await requireFounder();
-  await prisma.teamMembership.deleteMany({ where: { team: { key: "SEO" } } });
-  await prisma.messageChannel.deleteMany({ where: { key: "SEO" } });
-  const seoTeam = await prisma.team.findUnique({ where: { key: "SEO" } });
+  const seoTeam = await prisma.team.findUnique({ where: { key: "SEO" }, select: { id: true } });
   if (seoTeam) {
+    await prisma.teamMembership.deleteMany({ where: { team: { key: "SEO" } } });
+    await prisma.messageChannel.deleteMany({ where: { key: "SEO" } });
     await prisma.contentItem.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
     await prisma.calendarEvent.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
     await prisma.meeting.updateMany({ where: { teamId: seoTeam.id }, data: { teamId: null } });
@@ -89,7 +90,15 @@ function Section({
                   <button className="underline">Save</button>
                 </form>
                 {u.role !== "FOUNDER" ? (
-                  <KickButton userId={u.id} name={`${u.firstName} ${u.lastName}`} />
+                  <>
+                    <form action={viewAsMember}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button className="rounded-full bg-volt px-3 py-1 text-xs font-semibold text-ink">
+                        View as {u.firstName}
+                      </button>
+                    </form>
+                    <KickButton userId={u.id} name={`${u.firstName} ${u.lastName}`} />
+                  </>
                 ) : null}
               </div>
             </div>

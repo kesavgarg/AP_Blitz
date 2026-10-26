@@ -6,7 +6,22 @@ import { stageFromStatus } from "@/lib/stages";
 let boot: Promise<void> | null = null;
 
 async function ensureSubjects() {
+  const rows = await prisma.apSubject.findMany({
+    select: { slug: true, name: true, color: true, ink: true, shortName: true, icon: true },
+  });
+  const bySlug = new Map(rows.map((row) => [row.slug, row]));
   for (const [index, subject] of SUBJECTS.entries()) {
+    const current = bySlug.get(subject.slug);
+    if (
+      current &&
+      current.name === subject.name &&
+      current.color === subject.color &&
+      current.ink === subject.ink &&
+      current.shortName === subject.short &&
+      current.icon === subject.icon
+    ) {
+      continue;
+    }
     await prisma.apSubject.upsert({
       where: { slug: subject.slug },
       update: {

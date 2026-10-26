@@ -1,4 +1,5 @@
 import { dismissGuide } from "@/actions/guides";
+import { GuideVideo } from "@/components/workspace/guide-video";
 
 export function GuidePlayer({
   fileId,
@@ -16,29 +17,24 @@ export function GuidePlayer({
   which?: "educational" | "promo";
 }) {
   return (
-    <div className="max-w-3xl">
-      <h1 className="font-display text-4xl text-ink">{title}</h1>
+    <div className="max-w-3xl text-[#f6f1e8]">
+      <h1 className="font-display text-4xl">{title}</h1>
       {firstVisit ? (
-        <p className="mt-3 rounded-3xl bg-white p-4 text-sm text-ink">
+        <p className="mt-3 rounded-3xl border border-white/15 bg-[#17171c] p-4 text-sm">
           Watch this before you start. This tab stays in your workspace, so you can watch it again later.
         </p>
       ) : null}
-      <p className="mt-3 max-w-2xl text-sm text-ink/70">{body}</p>
+      <p className="mt-3 max-w-2xl text-sm text-white/75">{body}</p>
       {fileId ? (
-        <video
-          src={`/api/files/${fileId}`}
-          controls
-          playsInline
-          className="mt-6 aspect-video w-full rounded-3xl bg-black"
-        />
+        <GuideVideo fileId={fileId} />
       ) : (
-        <p className="mt-6 rounded-3xl bg-white p-5 text-sm text-ink/70">{waiting}</p>
+        <p className="mt-6 rounded-3xl border border-white/15 bg-[#17171c] p-5 text-sm text-white/75">{waiting}</p>
       )}
       {firstVisit && which ? (
         <form action={dismissGuide} className="mt-4">
           <input type="hidden" name="which" value={which} />
           <button className="rounded-full bg-volt px-5 py-3 text-sm font-semibold text-ink">
-            I've watched it
+            I&apos;ve watched it
           </button>
         </form>
       ) : null}

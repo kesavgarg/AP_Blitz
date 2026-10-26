@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { createSession, hashPassword, requireTeam, requireUser, verifyPassword } from "@/lib/auth";
+import { createSession, hashPassword, requireRealUser, requireTeam, requireUser, verifyPassword } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 
@@ -55,6 +55,18 @@ export async function markNotificationsRead() {
   revalidatePath("/workspace/notifications");
   revalidatePath("/student/notifications");
   revalidatePath("/student/dashboard");
+  revalidatePath("/admin/alerts");
+}
+
+export async function markAdminAlertsRead() {
+  const user = await requireRealUser();
+  if (user.role !== "FOUNDER" && user.role !== "TEAM_ADMIN") return;
+  await prisma.notification.updateMany({
+    where: { userId: user.id, readAt: null },
+    data: { readAt: new Date() },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/alerts");
 }
 
 export type ProfileState = { error?: string; success?: string } | undefined;

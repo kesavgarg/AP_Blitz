@@ -77,6 +77,44 @@ label,
     background-color 90ms ease,
     box-shadow 90ms ease;
 }
+button:not(:disabled),
+[type="submit"]:not(:disabled),
+[type="button"]:not(:disabled),
+summary,
+[role="button"] {
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  [type="submit"]:not(:disabled):hover,
+  [type="button"]:not(:disabled):hover,
+  a.rounded-full:hover,
+  nav a:hover,
+  summary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+  }
+  :is(button, a).bg-volt:hover,
+  :is(button, a)[class~="bg-volt"]:hover,
+  #workspace-root.ws-dark :is(button, a).bg-volt:hover {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    filter: none;
+  }
+  :is(button, a).bg-ink:hover,
+  #workspace-root.ws-dark :is(button, a).bg-ink:hover {
+    background-color: #ffffff !important;
+    color: #111111 !important;
+    filter: none;
+  }
+  :is(button, a).bg-white:hover,
+  :is(button, a).bg-paper:hover,
+  #workspace-root.ws-dark :is(button, a).bg-white:hover {
+    background-color: #111111 !important;
+    color: #ffffff !important;
+    filter: none;
+  }
+}
 a:active,
 button:not(:disabled):active,
 summary:active,
@@ -87,16 +125,8 @@ label:active,
 [type="button"]:not(:disabled):active,
 .btn-press:not(:disabled):active,
 .is-pressed {
-  transform: scale(0.97);
-  filter: brightness(1.28);
-}
-@media (hover: hover) and (pointer: fine) {
-  button:not(:disabled):hover,
-  [type="submit"]:not(:disabled):hover,
-  [type="button"]:not(:disabled):hover,
-  a.rounded-full:hover {
-    filter: brightness(1.14);
-  }
+  transform: translateY(1px) scale(0.98);
+  filter: none;
 }
 button:disabled,
 .btn-press:disabled {
@@ -142,8 +172,14 @@ button:disabled,
 }
 #workspace-root.ws-dark .text-ink,
 #workspace-root.ws-dark .text-ink\/80,
-#workspace-root.ws-dark .text-ink\/70 {
+#workspace-root.ws-dark .text-ink\/70,
+#workspace-root.ws-dark [class~="text-ink"],
+#workspace-root.ws-dark [class*="text-ink/"] {
   color: #f6f1e8 !important;
+}
+#workspace-root.ws-dark :is(a, button).bg-volt,
+#workspace-root.ws-dark :is(a, button).bg-volt[class*="text-ink"] {
+  color: #1a1208 !important;
 }
 #workspace-root.ws-dark .text-ink\/60,
 #workspace-root.ws-dark .text-ink\/50,

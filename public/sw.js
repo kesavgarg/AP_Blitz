@@ -1,19 +1,25 @@
-const CACHE = "apblitz-offline-v1";
+const CACHE = "apblitz-offline-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(["/offline.html", "/logo-ap-blitz.png"])).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(["/offline.html", "/logo-ap-blitz.png"]))
+      .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  );
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.mode !== "navigate") return;
-  event.respondWith(fetch(event.request).catch(() => caches.match("/offline.html")));
-});
+// Navigations are left to the browser. Wrapping them here waits for the full
+// server render and leaves the screen black until every database call finishes.
 
 self.addEventListener("push", (event) => {
   let data = { title: "AP Blitz", body: "Something new is waiting.", href: "/" };

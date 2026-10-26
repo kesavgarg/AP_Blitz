@@ -5,9 +5,9 @@ import { isEducationalVideoTaker, isOneTimeMember, isPromotionalMember, oneTimeP
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
 import { canAccessChannel } from "@/lib/rbac";
-import { AlertWatcher } from "@/components/workspace/alert-watcher";
 import { ThemeToggle } from "@/components/workspace/theme-toggle";
 import { OneTimeGate } from "@/components/workspace/one-time-gate";
+import { ViewAsBanner } from "@/components/view-as-banner";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -16,16 +16,24 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (user.role === "BLITZER") redirect("/student/dashboard");
-  const [oneTime, promotional, educational] = await Promise.all([
+  const [oneTime, promotional, educational, guideSeen, channels] = await Promise.all([
     isOneTimeMember(user.id, user.role),
     isPromotionalMember(user.id, user.role),
-    isEducationalVideoTaker(user.id, user.role),
+    isEducationalVideoTaker(user.id, user.role, user.teams),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { educationalGuideSeenAt: true, promoGuideSeenAt: true },
+    }),
+    prisma.messageChannel.findMany({
+      select: {
+        id: true,
+        key: true,
+        kind: true,
+        members: { where: { userId: user.id }, select: { userId: true } },
+      },
+    }),
   ]);
   const pathname = (await headers()).get("x-pathname") || "";
-  const guideSeen = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { educationalGuideSeenAt: true, promoGuideSeenAt: true },
-  });
   if (oneTime && pathname.startsWith("/workspace") && !oneTimePathAllowed(pathname)) {
     redirect("/workspace/about");
   }
@@ -48,10 +56,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (promotional && pathname.startsWith("/workspace/pipeline")) {
     redirect("/workspace/trends");
   }
-  const channels = await prisma.messageChannel.findMany({
-    include: { members: { select: { userId: true } } },
-  });
-  const accessibleIds = channels.filter((c) => canAccessChannel(user, c)).map((c) => c.id);
+  const accessibleIds = channels.filter((channel) => canAccessChannel(user, channel)).map((channel) => channel.id);
+  const recent = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
   const [unread, unreadMessages] = await Promise.all([
     prisma.notification.count({
       where: { userId: user.id, readAt: null },
@@ -62,6 +68,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             channelId: { in: accessibleIds },
             deletedAt: null,
             authorId: { not: user.id },
+            createdAt: { gte: recent },
             reads: { none: { userId: user.id } },
           },
         })
@@ -117,10 +124,15 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (!founder) {
     items.push({ href: "/workspace/announcements", label: "Announcements", icon: "📣" });
   }
-  items.push(
-    { href: "/workspace/notifications", label: unread ? `Alerts (${unread})` : "Notifications", icon: "🔔", badge: unread || undefined },
-    { href: "/workspace/profile", label: "Profile", icon: "🙂" },
-  );
+  if (user.role !== "FOUNDER") {
+    items.push({
+      href: "/workspace/notifications",
+      label: unread ? `Alerts (${unread})` : "Notifications",
+      icon: "🔔",
+      badge: unread || undefined,
+    });
+  }
+  items.push({ href: "/workspace/profile", label: "Profile", icon: "🙂" });
   }
 
   const roleLabel = oneTime
@@ -138,7 +150,9 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   return (
     <div id="workspace-root" className="ws-dark flex min-h-screen bg-[#0c0c10] text-[#f6f1e8]">
-      <AlertWatcher baseTitle="AP Blitz" />
+      <div className="flex min-w-0 flex-1 flex-col">
+      {user.viewingAs ? <ViewAsBanner name={`${user.firstName} ${user.lastName}`} /> : null}
+      <div className="flex min-h-screen min-w-0 flex-1">
       <WorkspaceNav
         items={items}
         name={`${user.firstName} ${user.lastName}`}
@@ -152,7 +166,11 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           </p>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <ThemeToggle />
-            {oneTime ? null : (
+            {oneTime ? null : user.role === "FOUNDER" ? (
+              <Link href="/admin/alerts" className="rounded-full bg-ink px-3 py-1 text-paper">
+                Alerts
+              </Link>
+            ) : (
             <Link href="/workspace/notifications" className="rounded-full bg-ink px-3 py-1 text-paper">
               {unread + unreadMessages ? `${unread + unreadMessages} new` : "Caught up"}
             </Link>
@@ -162,6 +180,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         <div className="flex-1 px-4 py-6 md:px-8">
           <OneTimeGate active={Boolean(oneTime)}>{children}</OneTimeGate>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

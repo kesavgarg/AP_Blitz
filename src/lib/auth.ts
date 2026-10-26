@@ -1,10 +1,11 @@
 import "server-only";
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { SESSION_COOKIE } from "@/lib/constants";
+import { SESSION_COOKIE, VIEW_AS_COOKIE } from "@/lib/constants";
 import { AUTH_SECRET } from "@/lib/env";
 import type { PermissionRole, TeamKey } from "@prisma/client";
 const SESSION_DAYS = 14;
@@ -18,6 +19,7 @@ export type SessionUser = {
   isActive: boolean;
   mustChangePassword: boolean;
   teams: { key: TeamKey; name: string; isLeader: boolean }[];
+  viewingAs?: boolean;
 };
 
 export function authSecret() {
@@ -89,9 +91,41 @@ export async function destroySession() {
     }
   }
   cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(VIEW_AS_COOKIE);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+type DbAccount = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: PermissionRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  memberships: { isLeader: boolean; team: { key: TeamKey; name: string } }[];
+};
+
+function toSessionUser(user: DbAccount, viewingAs = false): SessionUser {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
+    teams: user.memberships.map((membership) => ({
+      key: membership.team.key,
+      name: membership.team.name,
+      isLeader: membership.isLeader,
+    })),
+    viewingAs,
+  };
+}
+
+const accountInclude = { memberships: { include: { team: true } } } as const;
+
+export const getRealSessionUser = cache(async (): Promise<SessionUser | null> => {
   const cookieStore = await cookies();
   const jwt = cookieStore.get(SESSION_COOKIE)?.value;
   if (!jwt) return null;
@@ -100,33 +134,43 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     if (typeof payload.sid !== "string") return null;
     const session = await prisma.session.findUnique({
       where: { token: payload.sid },
-      include: {
-        user: {
-          include: { memberships: { include: { team: true } } },
-        },
-      },
+      include: { user: { include: accountInclude } },
     });
-    if (!session || session.expiresAt < new Date() || !session.user.isActive) {
-      return null;
-    }
-    const user = session.user;
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      isActive: user.isActive,
-      mustChangePassword: user.mustChangePassword,
-      teams: user.memberships.map((m) => ({
-        key: m.team.key,
-        name: m.team.name,
-        isLeader: m.isLeader,
-      })),
-    };
+    if (!session || session.expiresAt < new Date() || !session.user.isActive) return null;
+    return toSessionUser(session.user);
   } catch {
     return null;
   }
+});
+
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  const real = await getRealSessionUser();
+  if (!real || real.role !== "FOUNDER") return real;
+  const viewAs = (await cookies()).get(VIEW_AS_COOKIE)?.value;
+  if (!viewAs || viewAs === real.id) return real;
+  const target = await prisma.user.findUnique({
+    where: { id: viewAs },
+    include: accountInclude,
+  });
+  if (!target || !target.isActive || target.role === "FOUNDER") return real;
+  return toSessionUser(target, true);
+});
+
+export async function getViewingAsLabel() {
+  const real = await getRealSessionUser();
+  if (!real || real.role !== "FOUNDER") return null;
+  const current = await getSessionUser();
+  if (!current?.viewingAs) return null;
+  return {
+    name: `${current.firstName} ${current.lastName}`,
+    href: current.role === "BLITZER" ? "/student/dashboard" : "/workspace",
+  };
+}
+
+export async function requireRealUser() {
+  const user = await getRealSessionUser();
+  if (!user) redirect("/login");
+  return user;
 }
 
 export async function requireUser() {
@@ -143,13 +187,13 @@ export async function requireTeam() {
 }
 
 export async function requireFounder() {
-  const user = await requireUser();
+  const user = await requireRealUser();
   if (user.role !== "FOUNDER") redirect("/workspace");
   return user;
 }
 
 export async function requireAdmin() {
-  const user = await requireUser();
+  const user = await requireRealUser();
   if (user.role !== "FOUNDER" && user.role !== "TEAM_ADMIN") {
     redirect("/workspace");
   }

@@ -80,18 +80,20 @@ export function AlertWatcher({ baseTitle }: { baseTitle: string }) {
         if (!res.ok || cancelled) return;
         const data = (await res.json()) as { unread: number };
         const unread = Number(data.unread) || 0;
+        if (last.current !== unread) {
+          document.title = unread > 0 ? `(${unread}) ${baseTitle}` : baseTitle;
+          drawBadgedFavicon(unread);
+        }
         if (last.current !== null && unread > last.current && unlocked.current) {
           playPing();
         }
         last.current = unread;
-        document.title = unread > 0 ? `(${unread}) ${baseTitle}` : baseTitle;
-        drawBadgedFavicon(unread);
       } catch {
         // ignore polling errors
       }
     }
     tick();
-    const id = window.setInterval(tick, 8000);
+    const id = window.setInterval(tick, 25000);
     return () => {
       cancelled = true;
       window.clearInterval(id);

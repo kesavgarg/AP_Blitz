@@ -7,8 +7,7 @@ import { WelcomePopup } from "@/components/public/welcome-popup";
 import { FollowPrompt } from "@/components/public/follow-prompt";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  await bootCatalog();
-  const [user, settings] = await Promise.all([getSessionUser(), getOrgSettings()]);
+  const [, user, settings] = await Promise.all([bootCatalog(), getSessionUser(), getOrgSettings()]);
   const accountHref = !user
     ? "/login"
     : user.role === "BLITZER"
