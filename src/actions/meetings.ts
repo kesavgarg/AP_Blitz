@@ -7,13 +7,14 @@ import { isFounder, requireTeam } from "@/lib/auth";
 import { notify, notifyMany, logActivity } from "@/lib/activity";
 import { sendMeetingInvite } from "@/lib/email";
 import { formatDateTime } from "@/lib/utils";
+import { parseDateTimeLocal } from "@/lib/calendar-dates";
 
 export async function createMeeting(formData: FormData) {
   const user = await requireTeam();
   if (user.role === "MEMBER") return;
   const title = String(formData.get("title") || "").trim();
   const meetingLink = String(formData.get("meetingLink") || "").trim();
-  const startAt = String(formData.get("startAt") || "");
+  const startAt = parseDateTimeLocal(String(formData.get("startAt") || ""));
   if (!title || !meetingLink || !startAt) return;
   const teamKey = String(formData.get("teamKey") || "") as TeamKey | "";
   const team = teamKey ? await prisma.team.findUnique({ where: { key: teamKey } }) : null;
@@ -23,8 +24,8 @@ export async function createMeeting(formData: FormData) {
     data: {
       title,
       description: String(formData.get("description") || "") || null,
-      startAt: new Date(startAt),
-      endAt: formData.get("endAt") ? new Date(String(formData.get("endAt"))) : null,
+      startAt,
+      endAt: parseDateTimeLocal(String(formData.get("endAt") || "")),
       meetingLink,
       teamId: team?.id,
       hostId: user.id,

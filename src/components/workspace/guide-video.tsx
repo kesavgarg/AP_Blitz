@@ -18,7 +18,7 @@ export function GuideVideo({ fileId }: { fileId: string }) {
       src={`/api/files/${fileId}`}
       controls
       playsInline
-      preload="metadata"
+      preload="none"
       onError={() => setFailed(true)}
       className="mt-6 aspect-video max-h-[70vh] w-full rounded-3xl border border-white/20 bg-[#17171c] object-contain"
     />

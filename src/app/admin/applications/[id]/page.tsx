@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { GRADE_LABELS, getRoleByKey, ROLES } from "@/lib/roles";
 import { formatDateTime } from "@/lib/utils";
 import { acceptApplication, placeOneTimeMember, rejectApplication, updateApplicationStatus } from "@/actions/admin";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function ApplicationDetail({
   params,
@@ -114,9 +115,9 @@ export default async function ApplicationDetail({
             </p>
             <input type="hidden" name="id" value={app.id} />
             <input type="hidden" name="role" value="VIDEO_CREATOR" />
-            <button className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
+            <SubmitButton pendingLabel="Letting them in…" className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
               Accept them to film
-            </button>
+            </SubmitButton>
           </form>
         ) : null}
         {app.status !== "ACCEPTED" && app.commitment !== "ONE_TIME" ? (
@@ -145,9 +146,9 @@ export default async function ApplicationDetail({
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" name="makeLeader" /> Make team lead
             </label>
-            <button className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
+            <SubmitButton pendingLabel="Letting them in…" className="mt-4 rounded-full bg-volt px-4 py-2 font-semibold text-ink">
               Accept and email them
-            </button>
+            </SubmitButton>
           </form>
         ) : null}
         {app.status === "ACCEPTED" && app.commitment === "ONE_TIME" && app.joinRequestedAt ? (

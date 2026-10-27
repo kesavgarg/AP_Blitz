@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isFounder, onTeam, requireUser } from "@/lib/auth";
 import { createEvent, deleteEvent } from "@/actions/calendar";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { formatDateTime } from "@/lib/utils";
 import {
   addMonths,
@@ -9,9 +10,9 @@ import {
   endOfWeek,
   format,
   isSameMonth,
-  startOfMonth,
   startOfWeek,
 } from "date-fns";
+import { dayKey, monthCursor, monthKey } from "@/lib/calendar-dates";
 
 export const dynamic = "force-dynamic";
 
@@ -28,43 +29,56 @@ const COLORS: Record<string, string> = {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; created?: string }>;
+  searchParams: Promise<{ month?: string; created?: string; error?: string }>;
 }) {
   const user = await requireUser();
-  const { month, created } = await searchParams;
-  const cursor = month ? new Date(month + "-01") : new Date();
-  const start = startOfWeek(startOfMonth(cursor));
+  const { month, created, error } = await searchParams;
+  const cursor = monthCursor(month);
+  const start = startOfWeek(cursor);
   const end = endOfWeek(endOfMonth(cursor));
   const days = eachDayOfInterval({ start, end });
+  const now = new Date();
 
-  const events = await prisma.calendarEvent.findMany({
-    where: { startAt: { gte: start, lte: end } },
-    include: { team: true, assignees: true },
-    orderBy: { startAt: "asc" },
-  });
+  const [events, upcomingEvents] = await Promise.all([
+    prisma.calendarEvent.findMany({
+      where: { startAt: { gte: start, lte: end } },
+      include: { team: true, assignees: true },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.calendarEvent.findMany({
+      where: { startAt: { gte: now } },
+      include: { team: true, assignees: true },
+      orderBy: { startAt: "asc" },
+      take: 24,
+    }),
+  ]);
   const teams = (await prisma.team.findMany({ orderBy: { name: "asc" } })).filter(
     (t) => t.key !== "SEO",
   );
 
-  const visible = events.filter((e) => {
+  const prev = monthKey(addMonths(cursor, -1));
+  const next = monthKey(addMonths(cursor, 1));
+  const monthQuery = monthKey(cursor);
+  const canSee = (e: (typeof events)[number]) => {
     if (isFounder(user)) return true;
     if (!e.team) return true;
     if (onTeam(user, e.team.key)) return true;
     if (e.assignees.some((a) => a.userId === user.id)) return true;
     return false;
-  });
-
-  const prev = format(addMonths(cursor, -1), "yyyy-MM");
-  const next = format(addMonths(cursor, 1), "yyyy-MM");
-  const upcoming = visible
-    .filter((e) => e.startAt >= new Date())
-    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  };
+  const visible = events.filter(canSee);
+  const upcoming = upcomingEvents.filter(canSee);
 
   return (
     <div>
       {created ? (
-        <p className="mb-4 rounded-2xl bg-volt/30 px-4 py-3 text-sm">
-          Event added. Anyone on the selected audience will see it here.
+        <p className="mb-4 rounded-2xl bg-volt px-4 py-3 text-sm font-medium text-[#1a1208]">
+          Event added. It is on this month, and the people you picked can see it.
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mb-4 rounded-2xl border border-coral/40 bg-coral/15 px-4 py-3 text-sm text-[#f6f1e8]">
+          {error}
         </p>
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -110,7 +124,9 @@ export default async function CalendarPage({
                   </option>
                 ))}
               </select>
-              <button className="rounded-full bg-ink px-4 py-2 text-paper">Create</button>
+              <SubmitButton pendingLabel="Adding…" className="rounded-full bg-ink px-4 py-2 text-paper">
+                Create
+              </SubmitButton>
             </div>
           </form>
         ) : null}
@@ -129,13 +145,14 @@ export default async function CalendarPage({
                 {user.role !== "MEMBER" ? (
                   <form action={deleteEvent}>
                     <input type="hidden" name="id" value={e.id} />
+                    <input type="hidden" name="next" value={`/workspace/calendar?month=${monthQuery}`} />
                     <button className="text-xs text-ink/40">Delete</button>
                   </form>
                 ) : null}
               </div>
             ))
           ) : (
-            <p className="mt-3 text-sm text-ink/50">Nothing upcoming this month.</p>
+            <p className="mt-3 text-sm text-ink/50">Nothing coming up. Add an event and it will show on the day you picked.</p>
           )}
         </div>
       </div>
@@ -148,14 +165,14 @@ export default async function CalendarPage({
             </p>
           ))}
           {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayEvents = visible.filter((e) => format(e.startAt, "yyyy-MM-dd") === key);
+            const key = dayKey(day);
+            const dayEvents = visible.filter((e) => dayKey(e.startAt) === key);
             return (
               <div
                 key={key}
                 className={`cal-day min-h-24 rounded-xl p-2 ${isSameMonth(day, cursor) ? "" : "cal-day-out"}`}
               >
-                <p className="text-xs font-semibold text-ink">{format(day, "d")}</p>
+                <p className="cal-num text-sm font-semibold">{format(day, "d")}</p>
                 {dayEvents.map((e) => (
                   <p
                     key={e.id}

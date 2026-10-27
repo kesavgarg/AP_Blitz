@@ -10,10 +10,10 @@ export default async function AboutBlitzPage() {
   if (!(await isOneTimeMember(user.id, user.role)) && !isAdmin(user)) redirect("/workspace");
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-volt">Start here</p>
-      <h1 className="mt-2 font-display text-4xl text-ink">What AP Blitz is</h1>
-      <div className="mt-5 space-y-3 text-sm text-ink/80">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-white/15 bg-[#17171c] p-6 text-[#f6f1e8]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-volt">You're in</p>
+      <h1 className="mt-2 font-display text-4xl">What AP Blitz is</h1>
+      <div className="mt-5 space-y-3 text-sm text-white/80">
         <p>AP Blitz is student-run AP content. Students make the videos and the graphics, for other students who are studying.</p>
         <p>You are here to make one video. It will be posted. You pick which one on the next pages, record it, and send it to Kesav.</p>
         <p>This is not a weekly job yet. After the video is in, you can log out and wait, or ask to join the team.</p>

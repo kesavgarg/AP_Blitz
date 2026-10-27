@@ -66,6 +66,9 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
       port,
       secure: port === 465,
       auth: { user, pass },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
     });
     const text =
       html

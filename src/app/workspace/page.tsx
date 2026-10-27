@@ -3,13 +3,14 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { workspaceForTeam } from "@/lib/rbac";
+import { isEducationalVideoTaker, isPromotionalMember } from "@/lib/one-time";
 
 export default async function WorkspaceHome() {
   const user = await requireUser();
   const now = new Date();
   const week = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [tasks, meetings, announcements, messages, notifications] = await Promise.all([
+  const [tasks, meetings, announcements, messages, notifications, guide, educational, promotional] = await Promise.all([
     prisma.task.findMany({
       where: {
         assigneeId: user.id,
@@ -38,6 +39,12 @@ export default async function WorkspaceHome() {
       take: 8,
     }),
     prisma.notification.count({ where: { userId: user.id, readAt: null } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { educationalGuideSeenAt: true, promoGuideSeenAt: true },
+    }),
+    isEducationalVideoTaker(user.id, user.role, user.teams),
+    isPromotionalMember(user.id, user.role),
   ]);
 
   const dueThisWeek = tasks.filter((t) => t.deadline && t.deadline <= week).length;
@@ -58,27 +65,39 @@ export default async function WorkspaceHome() {
         {user.mustChangePassword ? `You're in, ${user.firstName}.` : `Welcome back, ${user.firstName}!`}
       </h1>
       {user.mustChangePassword ? (
-        <div className="mt-4 rounded-3xl border border-volt/40 bg-volt/20 p-5">
-          <p className="font-display text-2xl">Congratulations — you got accepted.</p>
-          <p className="mt-2 text-sm text-ink/70">
-            This is the team workspace: calendar, messages, tasks, and your role page. Change the
-            temporary password in Profile when you have a second.
+        <div className="mt-4 rounded-3xl bg-volt p-6 text-[#1a1208]">
+          <p className="font-display text-3xl">Congratulations — you got accepted.</p>
+          <p className="mt-2 text-sm">
+            This is the team workspace. Calendar, messages, and tasks are open. Change the temporary
+            password in Profile when you have a second.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link className="rounded-full bg-ink px-4 py-2 text-sm text-paper" href="/workspace/calendar">
+            <Link className="rounded-full bg-[#1a1208] px-4 py-2 text-sm font-semibold text-volt" href="/workspace/calendar">
               Open calendar
             </Link>
-            <Link className="rounded-full border border-ink/15 px-4 py-2 text-sm" href="/workspace/messages">
+            <Link className="rounded-full bg-[#1a1208] px-4 py-2 text-sm font-semibold text-volt" href="/workspace/messages">
               Messages
             </Link>
-            <Link className="rounded-full border border-ink/15 px-4 py-2 text-sm" href="/workspace/tasks">
+            <Link className="rounded-full bg-[#1a1208] px-4 py-2 text-sm font-semibold text-volt" href="/workspace/tasks">
               Tasks
             </Link>
-            <Link className="rounded-full border border-ink/15 px-4 py-2 text-sm" href="/workspace/profile">
+            <Link className="rounded-full border border-[#1a1208]/30 px-4 py-2 text-sm font-semibold" href="/workspace/profile">
               Change password
             </Link>
           </div>
         </div>
+      ) : null}
+      {educational && !guide?.educationalGuideSeenAt ? (
+        <Link href="/workspace/how-to-record" className="mt-4 block rounded-3xl border border-white/15 bg-[#17171c] p-5 text-[#f6f1e8]">
+          <p className="font-display text-2xl">How to record</p>
+          <p className="mt-1 text-sm text-white/70">Watch Kesav&apos;s walkthrough when you&apos;re ready. You can look around the workspace first.</p>
+        </Link>
+      ) : null}
+      {promotional && !guide?.promoGuideSeenAt ? (
+        <Link href="/workspace/promo-guide" className="mt-4 block rounded-3xl border border-white/15 bg-[#17171c] p-5 text-[#f6f1e8]">
+          <p className="font-display text-2xl">How to record and edit</p>
+          <p className="mt-1 text-sm text-white/70">Watch the promotional walkthrough when you&apos;re ready. The rest of the workspace is already open.</p>
+        </Link>
       ) : null}
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <Stat n={`${dueThisWeek} tasks`} l="due this week" />

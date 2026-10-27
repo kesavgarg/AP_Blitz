@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createEvent, deleteEvent } from "@/actions/calendar";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -8,10 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminCalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; error?: string }>;
 }) {
   await requireAdmin();
-  const { created } = await searchParams;
+  const { created, error } = await searchParams;
   const [events, teams] = await Promise.all([
     prisma.calendarEvent.findMany({
       include: { team: true },
@@ -34,6 +35,9 @@ export default async function AdminCalendarPage({
           <p className="mt-3 rounded-xl bg-volt/15 px-3 py-2 text-sm text-volt">
             Event saved. Members will see it on their calendar and get an in-app alert.
           </p>
+        ) : null}
+        {error ? (
+          <p className="mt-3 rounded-xl bg-coral/20 px-3 py-2 text-sm text-coral">{error}</p>
         ) : null}
         <input type="hidden" name="next" value="/admin/calendar" />
         <div className="mt-5 space-y-3 text-sm">
@@ -63,9 +67,9 @@ export default async function AdminCalendarPage({
               </option>
             ))}
           </select>
-          <button className="rounded-full bg-volt px-5 py-2 font-semibold text-ink">
+          <SubmitButton pendingLabel="Adding…" className="rounded-full bg-volt px-5 py-2 font-semibold text-ink">
             Add to calendar
-          </button>
+          </SubmitButton>
         </div>
       </form>
       <section className="rounded-3xl border border-white/10 bg-navy p-6">

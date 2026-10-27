@@ -258,8 +258,19 @@ button:disabled,
   color: rgba(246, 241, 232, 0.72);
   opacity: 1;
 }
-#workspace-root.ws-dark .cal-day .text-ink {
+.cal-num {
+  color: #111;
+}
+#workspace-root.ws-dark .cal-day .text-ink,
+#workspace-root.ws-dark .cal-num {
   color: #f6f1e8 !important;
+}
+.mesh input[type="date"],
+.mesh input[type="datetime-local"],
+.mesh input[type="time"] {
+  color-scheme: dark;
+  color: #f6f1e8;
+  background-color: #111114;
 }
 #workspace-root.ws-dark input[type="date"],
 #workspace-root.ws-dark input[type="datetime-local"],

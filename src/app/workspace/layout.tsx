@@ -4,7 +4,6 @@ import { isAdmin, requireUser } from "@/lib/auth";
 import { isEducationalVideoTaker, isOneTimeMember, isPromotionalMember, oneTimePathAllowed } from "@/lib/one-time";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceNav, type NavItem } from "@/components/workspace/nav";
-import { canAccessChannel } from "@/lib/rbac";
 import { ThemeToggle } from "@/components/workspace/theme-toggle";
 import { OneTimeGate } from "@/components/workspace/one-time-gate";
 import { ViewAsBanner } from "@/components/view-as-banner";
@@ -16,64 +15,19 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (user.role === "BLITZER") redirect("/student/dashboard");
-  const [oneTime, promotional, educational, guideSeen, channels] = await Promise.all([
+  const [oneTime, promotional, educational, unread] = await Promise.all([
     isOneTimeMember(user.id, user.role),
     isPromotionalMember(user.id, user.role),
     isEducationalVideoTaker(user.id, user.role, user.teams),
-    prisma.user.findUnique({
-      where: { id: user.id },
-      select: { educationalGuideSeenAt: true, promoGuideSeenAt: true },
-    }),
-    prisma.messageChannel.findMany({
-      select: {
-        id: true,
-        key: true,
-        kind: true,
-        members: { where: { userId: user.id }, select: { userId: true } },
-      },
-    }),
+    prisma.notification.count({ where: { userId: user.id, readAt: null } }),
   ]);
   const pathname = (await headers()).get("x-pathname") || "";
   if (oneTime && pathname.startsWith("/workspace") && !oneTimePathAllowed(pathname)) {
     redirect("/workspace/about");
   }
-  if (
-    pathname &&
-    educational &&
-    !guideSeen?.educationalGuideSeenAt &&
-    !pathname.startsWith("/workspace/how-to-record")
-  ) {
-    redirect("/workspace/how-to-record");
-  }
-  if (
-    pathname &&
-    promotional &&
-    !guideSeen?.promoGuideSeenAt &&
-    !pathname.startsWith("/workspace/promo-guide")
-  ) {
-    redirect("/workspace/promo-guide");
-  }
   if (promotional && pathname.startsWith("/workspace/pipeline")) {
     redirect("/workspace/trends");
   }
-  const accessibleIds = channels.filter((channel) => canAccessChannel(user, channel)).map((channel) => channel.id);
-  const recent = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
-  const [unread, unreadMessages] = await Promise.all([
-    prisma.notification.count({
-      where: { userId: user.id, readAt: null },
-    }),
-    accessibleIds.length
-      ? prisma.message.count({
-          where: {
-            channelId: { in: accessibleIds },
-            deletedAt: null,
-            authorId: { not: user.id },
-            createdAt: { gte: recent },
-            reads: { none: { userId: user.id } },
-          },
-        })
-      : Promise.resolve(0),
-  ]);
 
   const items: NavItem[] = [];
   const founder = user.role === "FOUNDER";
@@ -94,7 +48,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   }
   items.push(
     { href: "/workspace", label: "Overview", icon: "🏠" },
-    { href: "/workspace/messages", label: "Messages", icon: "💬", badge: unreadMessages || undefined },
+    { href: "/workspace/messages", label: "Messages", icon: "💬" },
     { href: "/workspace/tasks", label: "My Tasks", icon: "✅" },
     { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
   );
@@ -172,7 +126,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
               </Link>
             ) : (
             <Link href="/workspace/notifications" className="rounded-full bg-ink px-3 py-1 text-paper">
-              {unread + unreadMessages ? `${unread + unreadMessages} new` : "Caught up"}
+              {unread ? `${unread} new` : "Caught up"}
             </Link>
             )}
           </div>
