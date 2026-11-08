@@ -61,9 +61,14 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   );
   if (recordGuide) items.push({ href: "/workspace/how-to-record", label: "How to record", icon: "🎥" });
   if (promoGuide) items.push({ href: "/workspace/promo-guide", label: "How to record and edit", icon: "🎞️" });
-  if (founder) items.push({ href: "/workspace/scripts", label: "Scripts", icon: "✍️" });
+  const scriptWriter = !oneTime && !founder && user.teams.some((team) => team.key === "SCRIPT_WRITER");
+  if (founder || scriptWriter) items.push({ href: "/workspace/scripts", label: "Scripts", icon: "✍️" });
   if (educational) {
-    items.push({ href: "/workspace/open-scripts", label: "Scripts", icon: "✍️" });
+    items.push({
+      href: "/workspace/open-scripts",
+      label: scriptWriter ? "Open scripts" : "Scripts",
+      icon: "✍️",
+    });
     items.push({ href: "/workspace/accepted", label: "Accepted", icon: "📌" });
   }
   if (five) items.push({ href: "/workspace/five", label: "5 For 5", icon: "📚" });
