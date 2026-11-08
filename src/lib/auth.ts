@@ -216,6 +216,11 @@ export function onTeam(user: SessionUser, key: TeamKey) {
   return isFounder(user) || user.teams.some((t) => t.key === key);
 }
 
+/** Founder and script writers share the same scripts workspace. */
+export function canWriteScripts(user: SessionUser) {
+  return isFounder(user) || onTeam(user, "SCRIPT_WRITER");
+}
+
 export function teamKeys(user: SessionUser) {
   return user.teams.map((t) => t.key);
 }

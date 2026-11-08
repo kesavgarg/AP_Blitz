@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ContentStatus, DesignRequestType, ScriptStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFounder, leadsTeam, onTeam, requireTeam } from "@/lib/auth";
+import { canWriteScripts, isFounder, leadsTeam, onTeam, requireTeam } from "@/lib/auth";
 import { logActivity, nextContentId, notify } from "@/lib/activity";
 import { saveUpload } from "@/lib/files";
 import { sendAssignment } from "@/lib/email";
@@ -141,21 +141,8 @@ export async function saveScript(formData: FormData) {
       if (!script) {
         redirect(scriptPath({ error: "That script is gone.", subject: apSubject ?? undefined }));
       }
-      const ownsScript = script.authorId === user.id;
-      const writerCanEdit =
-        ownsScript &&
-        onTeam(user, "SCRIPT_WRITER") &&
-        script.status !== "APPROVED" &&
-        script.status !== "ASSIGNED" &&
-        script.status !== "COMPLETED";
-      if (!isFounder(user) && !writerCanEdit) {
-        redirect(
-          scriptPath({
-            id,
-            subject: apSubject ?? undefined,
-            error: "You can only edit your own script until Kesav publishes it.",
-          }),
-        );
+      if (!canWriteScripts(user)) {
+        redirect(scriptPath({ id, subject: apSubject ?? undefined, error: "Only script writers and Kesav can edit scripts." }));
       }
       const status: ScriptStatus = submit ? "SUBMITTED" : script.status === "DRAFT" ? "DRAFT" : script.status;
       await prisma.script.update({
@@ -192,8 +179,8 @@ export async function saveScript(formData: FormData) {
       redirect(scriptPath({ id, subject: apSubject ?? undefined }));
     }
 
-    if (!isFounder(user)) {
-      redirect(scriptPath({ error: "Only Kesav can create scripts." }));
+    if (!canWriteScripts(user)) {
+      redirect(scriptPath({ error: "Only script writers and Kesav can create scripts." }));
     }
     const team = await prisma.team.findUnique({ where: { key: "SCRIPT_WRITER" } });
     let item: Awaited<ReturnType<typeof prisma.contentItem.create>> | null = null;
@@ -257,8 +244,8 @@ export async function deleteScript(formData: FormData) {
     if (!script) {
       redirect(scriptPath({ error: "That script is already gone." }));
     }
-    if (!isFounder(user)) {
-      redirect(scriptPath({ id, subject: script.apSubject ?? undefined, error: "Only Kesav can delete scripts." }));
+    if (!canWriteScripts(user)) {
+      redirect(scriptPath({ id, subject: script.apSubject ?? undefined, error: "Only script writers and Kesav can delete scripts." }));
     }
     const subject = script.apSubject ?? "";
     await prisma.script.delete({ where: { id } });
@@ -283,7 +270,7 @@ export async function deleteScript(formData: FormData) {
 
 export async function publishScript(formData: FormData) {
   const user = await requireTeam();
-  if (!isFounder(user)) return;
+  if (!canWriteScripts(user)) return;
   const id = String(formData.get("id") || "");
   const script = await prisma.script.findUnique({
     where: { id },
