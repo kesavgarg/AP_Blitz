@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { isFounder, requireUser } from "@/lib/auth";
+import { isFounder, leadsTeam, onTeam, requireUser } from "@/lib/auth";
 import { deleteScript, publishScript, saveScript } from "@/actions/content";
 import { AP_SUBJECTS } from "@/lib/ap-subjects";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -14,9 +14,13 @@ export default async function ScriptsWorkspace({
   searchParams: Promise<{ id?: string; subject?: string; error?: string }>;
 }) {
   const user = await requireUser();
-  if (!isFounder(user)) notFound();
+  const founder = isFounder(user);
+  const writer = onTeam(user, "SCRIPT_WRITER");
+  if (!founder && !writer) notFound();
+  const seeAll = founder || leadsTeam(user, "SCRIPT_WRITER");
   const { id, subject, error } = await searchParams;
   const scripts = await prisma.script.findMany({
+    where: seeAll ? undefined : { authorId: user.id },
     include: { contentItem: { include: { video: true } }, author: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -31,7 +35,9 @@ export default async function ScriptsWorkspace({
       <aside className="rounded-3xl bg-white p-3 shadow-sm">
         <h1 className="px-2 font-display text-xl">Scripts</h1>
         <p className="mt-1 px-2 text-xs text-ink/50">
-          Only you can make or delete a script. Publish it, and an educational video maker can accept it.
+          {founder
+            ? "Only you can make or delete a script. Publish it, and an educational video maker can accept it."
+            : "Scripts assigned to you. Write, save, and submit. Kesav publishes them."}
         </p>
         <div className="mt-3 flex flex-wrap gap-1 px-1">
           <FilterChip href="/workspace/scripts" active={!subject} label="All" />
@@ -51,6 +57,7 @@ export default async function ScriptsWorkspace({
             />
           ) : null}
         </div>
+        {founder ? (
         <form action={saveScript} className="mt-3 space-y-2 px-2">
           <input type="hidden" name="title" value="Untitled script" />
           <input type="hidden" name="body" value="" />
@@ -70,6 +77,7 @@ export default async function ScriptsWorkspace({
             New script
           </SubmitButton>
         </form>
+        ) : null}
         <div className="mt-3 space-y-1">
           {filtered.length === 0 ? (
             <p className="px-2 text-xs text-ink/40">No scripts in this subject yet.</p>
@@ -133,31 +141,47 @@ export default async function ScriptsWorkspace({
               className="w-full rounded-2xl border px-4 py-3 font-sans text-sm leading-7"
               placeholder={"HOOK:\n\nPOINT 1:\n\nPOINT 2:\n\nOUTRO:"}
             />
-            <SubmitButton className="rounded-full border px-4 py-2 text-sm" pendingLabel="Saving…">
-              Save this script
-            </SubmitButton>
+            <div className="flex flex-wrap gap-2">
+              <SubmitButton className="rounded-full border px-4 py-2 text-sm" pendingLabel="Saving…">
+                Save this script
+              </SubmitButton>
+              {!founder && active.authorId === user.id && (active.status === "DRAFT" || active.status === "NEEDS_REVISION") ? (
+                <SubmitButton
+                  name="submit"
+                  value="true"
+                  className="rounded-full bg-ink px-4 py-2 text-sm text-paper"
+                  pendingLabel="Submitting…"
+                >
+                  Submit to Kesav
+                </SubmitButton>
+              ) : null}
+            </div>
           </form>
           {active.status === "ASSIGNED" ? (
             <p className="mt-4 text-sm text-ink/60">Someone already accepted this. It is off the open list.</p>
           ) : active.status === "APPROVED" ? (
             <p className="mt-4 text-sm text-ink/60">Published. An educational video maker can accept it.</p>
-          ) : (
+          ) : founder ? (
             <form action={publishScript} className="mt-4">
               <input type="hidden" name="id" value={active.id} />
               <SubmitButton className="rounded-full bg-ink px-4 py-2 text-sm text-paper" pendingLabel="Publishing…">
                 Publish
               </SubmitButton>
             </form>
-          )}
-          <form action={deleteScript} className="mt-3">
-            <input type="hidden" name="id" value={active.id} />
-            <SubmitButton
-              className="rounded-full border border-coral/40 px-4 py-2 text-sm text-coral"
-              pendingLabel="Deleting…"
-            >
-              Delete this script
-            </SubmitButton>
-          </form>
+          ) : active.status === "SUBMITTED" ? (
+            <p className="mt-4 text-sm text-ink/60">Submitted. Kesav will review it.</p>
+          ) : null}
+          {founder ? (
+            <form action={deleteScript} className="mt-3">
+              <input type="hidden" name="id" value={active.id} />
+              <SubmitButton
+                className="rounded-full border border-coral/40 px-4 py-2 text-sm text-coral"
+                pendingLabel="Deleting…"
+              >
+                Delete this script
+              </SubmitButton>
+            </form>
+          ) : null}
         </div>
       ) : (
         <div className="rounded-3xl bg-white p-6 text-sm text-ink/60 shadow-sm">

@@ -141,8 +141,21 @@ export async function saveScript(formData: FormData) {
       if (!script) {
         redirect(scriptPath({ error: "That script is gone.", subject: apSubject ?? undefined }));
       }
-      if (!isFounder(user)) {
-        redirect(scriptPath({ id, subject: apSubject ?? undefined, error: "Only Kesav can edit scripts." }));
+      const ownsScript = script.authorId === user.id;
+      const writerCanEdit =
+        ownsScript &&
+        onTeam(user, "SCRIPT_WRITER") &&
+        script.status !== "APPROVED" &&
+        script.status !== "ASSIGNED" &&
+        script.status !== "COMPLETED";
+      if (!isFounder(user) && !writerCanEdit) {
+        redirect(
+          scriptPath({
+            id,
+            subject: apSubject ?? undefined,
+            error: "You can only edit your own script until Kesav publishes it.",
+          }),
+        );
       }
       const status: ScriptStatus = submit ? "SUBMITTED" : script.status === "DRAFT" ? "DRAFT" : script.status;
       await prisma.script.update({
