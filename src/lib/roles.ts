@@ -292,7 +292,7 @@ export const ROLES: RoleContent[] = [
   },
 ];
 
-export type ApplyLaneId = "one-video" | "video-taker" | "five-for-five" | "graphic-posts";
+export type ApplyLaneId = "one-video" | "video-taker" | "graphic-posts";
 
 export type ApplyLane = {
   id: ApplyLaneId;
@@ -323,15 +323,6 @@ export const APPLY_LANES: ApplyLane[] = [
     team: "VIDEO_CREATOR",
     commitment: "FULL_TIME",
     choosesVideos: true,
-  },
-  {
-    id: "five-for-five",
-    name: "5 For 5",
-    description: "Build the course Google Doc. Units, checked quizzes, a unit test, written questions, and a 5-minute landscape video.",
-    weekly: "Course docs and a 5-minute video per unit",
-    team: "FIVE_FOR_FIVE",
-    commitment: "FULL_TIME",
-    choosesVideos: false,
   },
   {
     id: "graphic-posts",
