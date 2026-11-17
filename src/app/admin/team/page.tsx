@@ -3,6 +3,7 @@ import { requireFounder } from "@/lib/auth";
 import { viewAsMember } from "@/actions/view-as";
 import { setTeamLeader, updateMemberRole, addMemberToTeam } from "@/actions/admin";
 import { isActiveTeamKey, ROLES } from "@/lib/roles";
+import { AddMemberForm } from "@/components/admin/add-member-form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { KickButton, RemoveRoleButton } from "@/components/admin/kick-button";
 import type { PermissionRole, TeamKey } from "@prisma/client";
@@ -36,6 +37,9 @@ export default async function AdminTeamPage() {
         Club members are the people who make videos and posts. Blitzers are the student accounts.
         Remove from AP Blitz deletes their account. They have to apply again, and login says no account found.
       </p>
+      <AddMemberForm
+        roles={ROLES.filter((r) => isActiveTeamKey(r.key)).map((r) => ({ key: r.key, shortName: r.shortName }))}
+      />
       <Section title="Club members" people={members} />
       <Section title="Blitzers" people={blitzers} />
       <p className="mt-6 text-xs text-paper/40">{teams.length} teams in the org.</p>
