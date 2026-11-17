@@ -299,7 +299,7 @@ export function ApplyForm({ defaultLane }: { defaultLane?: ApplyLaneId }) {
             <div className="mt-3 grid gap-2">
               <label className="flex items-center gap-2 text-sm">
                 <input type="radio" name="videoLane" value="EDUCATIONAL" required />
-                Educational videos
+                Educational videos and promotional videos
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input type="radio" name="videoLane" value="PROMOTIONAL" />

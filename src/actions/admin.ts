@@ -251,6 +251,53 @@ export async function placeOneTimeMember(formData: FormData) {
   revalidatePath("/workspace");
 }
 
+export type CreateMemberState = { error?: string; added?: string } | undefined;
+
+/** Lets the founder add someone straight to the team with a password they choose, no application needed. */
+export async function createMemberDirectly(_prev: CreateMemberState, formData: FormData): Promise<CreateMemberState> {
+  const founder = await requireFounder();
+  const text = (name: string) => String(formData.get(name) ?? "").trim();
+  const firstName = text("firstName");
+  const lastName = text("lastName");
+  const email = text("email").toLowerCase();
+  const phone = text("phone");
+  const password = String(formData.get("password") ?? "");
+  const teamKey = text("teamKey") as TeamKey;
+  if (!firstName || !lastName) return { error: "Add their first and last name." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "That email doesn't look right." };
+  if (phone.length < 7) return { error: "Add their phone number." };
+  if (password.length < 8) return { error: "Use a password with at least 8 characters." };
+  if (!isActiveTeamKey(teamKey)) return { error: "Pick a role." };
+  if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+    return { error: "Someone already has an account with that email." };
+  }
+  if (teamKey === "FIVE_FOR_FIVE") await ensureFiveForFive();
+  const team = await prisma.team.findUnique({ where: { key: teamKey } });
+  if (!team) return { error: "That role doesn't exist yet." };
+
+  await prisma.user.create({
+    data: {
+      email,
+      firstName,
+      lastName,
+      phone,
+      role: "MEMBER",
+      isActive: true,
+      mustChangePassword: false,
+      passwordHash: await hashPassword(password),
+      memberships: { create: { teamId: team.id } },
+    },
+  });
+  await logActivity({
+    userId: founder.id,
+    action: `${founder.firstName} added ${firstName} ${lastName} to the team`,
+    objectType: "User",
+  });
+  revalidatePath("/admin/team");
+  revalidatePath("/workspace/team");
+  return { added: `${firstName} ${lastName} can log in now with ${email} and the password you set.` };
+}
+
 export async function addMemberToTeam(formData: FormData) {
   await requireFounder();
   const userId = String(formData.get("userId") || "");
