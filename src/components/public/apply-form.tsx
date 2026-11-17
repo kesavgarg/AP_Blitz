@@ -73,10 +73,8 @@ async function jpegFile(source: CanvasImageSource, width: number, height: number
 async function preparePhoto(file: File): Promise<{ file: File } | { error: string }> {
   const heic = file.type === "image/heic" || file.type === "image/heif" || /\.hei[cf]$/i.test(file.name);
   const unreadable = "This browser couldn't read that photo. Save it as a JPG, or take a screenshot of it, and upload that.";
-  if (!isPhonePhoto(file)) {
-    if (file.size > 3_500_000) return { error: "That photo is too large. Use a JPG or PNG." };
-    return { file };
-  }
+  if (!isPhonePhoto(file) && file.size <= 3_500_000) return { file };
+  // Any big photo gets shrunk to a small JPG here, so its size never blocks the form.
   const loaded = await loadPhoto(file);
   if (!loaded) {
     if (heic || file.size > 3_500_000 || !file.type) return { error: unreadable };
