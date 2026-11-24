@@ -46,19 +46,13 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (isAdmin(user)) {
     items.push({ href: "/admin", label: "Admin", icon: "🛠️" });
   }
-  items.push(
-    { href: "/workspace", label: "Overview", icon: "🏠" },
-    { href: "/workspace/messages", label: "Messages", icon: "💬" },
-    { href: "/workspace/tasks", label: "My Tasks", icon: "✅" },
-    { href: "/workspace/calendar", label: "Calendar", icon: "📅" },
-  );
-  if (!promotional) {
-    items.push({ href: "/workspace/pipeline", label: "Content Pipeline", icon: "🎬" });
-  }
-  items.push(
-    { href: "/workspace/videos", label: "Videos", icon: "▶️" },
-    { href: "/workspace/trends", label: "Trends", icon: "📈" },
-  );
+  // Messages, Content Pipeline, Completed Work, Daily Logs and Meetings are off the sidebar
+  // for everyone. Members also skip Videos; the founder also skips My Tasks.
+  items.push({ href: "/workspace", label: "Overview", icon: "🏠" });
+  if (!founder) items.push({ href: "/workspace/tasks", label: "My Tasks", icon: "✅" });
+  items.push({ href: "/workspace/calendar", label: "Calendar", icon: "📅" });
+  if (founder) items.push({ href: "/workspace/videos", label: "Videos", icon: "▶️" });
+  items.push({ href: "/workspace/trends", label: "Trends", icon: "📈" });
   if (recordGuide) items.push({ href: "/workspace/how-to-record", label: "How to record", icon: "🎥" });
   if (promoGuide) items.push({ href: "/workspace/promo-guide", label: "How to record and edit", icon: "🎞️" });
   const scriptWriter = !oneTime && !founder && user.teams.some((team) => team.key === "SCRIPT_WRITER");
@@ -75,11 +69,6 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (!founder && user.role === "TEAM_ADMIN") {
     items.push({ href: "/admin/applications", label: "Applications", icon: "📥" });
   }
-  items.push(
-    { href: "/workspace/completed", label: "Completed Work", icon: "📦" },
-    { href: "/workspace/daily-log", label: "Daily Logs", icon: "📝" },
-    { href: "/workspace/meetings", label: "Meetings", icon: "🗓️" },
-  );
   if (!founder) {
     items.push({ href: "/workspace/announcements", label: "Announcements", icon: "📣" });
   }

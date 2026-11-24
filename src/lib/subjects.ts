@@ -100,3 +100,8 @@ export function subjectFromLabel(label: string | null | undefined) {
 }
 
 export const AP_SUBJECTS = SUBJECTS.map((s) => s.name);
+
+/** Subjects a script can be filed under, A–Z. Includes series that are not public catalog subjects. */
+export const SCRIPT_SUBJECTS = [...AP_SUBJECTS, "AP Business", "Business in a Blitz"].sort((a, b) =>
+  a.localeCompare(b),
+);

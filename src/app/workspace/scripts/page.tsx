@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { canWriteScripts, requireUser } from "@/lib/auth";
 import { deleteScript, publishScript, saveScript } from "@/actions/content";
-import { AP_SUBJECTS } from "@/lib/ap-subjects";
+import { SCRIPT_SUBJECTS } from "@/lib/ap-subjects";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { LiveRefresh } from "@/components/workspace/live-refresh";
 
@@ -62,7 +62,7 @@ export default async function ScriptsWorkspace({
             className="w-full rounded-xl border px-2 py-1.5 text-xs"
           >
             <option value="">AP subject</option>
-            {AP_SUBJECTS.map((s) => (
+            {SCRIPT_SUBJECTS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -116,7 +116,7 @@ export default async function ScriptsWorkspace({
                 className="rounded-xl border px-3 py-2 text-sm"
               >
                 <option value="">AP subject</option>
-                {AP_SUBJECTS.map((s) => (
+                {SCRIPT_SUBJECTS.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
