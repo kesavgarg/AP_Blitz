@@ -1,1 +1,1 @@
-export { AP_SUBJECTS, slugifySubject, SUBJECTS, subjectFromLabel } from "@/lib/subjects";
+export { AP_SUBJECTS, SCRIPT_SUBJECTS, slugifySubject, SUBJECTS, subjectFromLabel } from "@/lib/subjects";
